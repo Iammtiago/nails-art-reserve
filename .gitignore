@@ -1,0 +1,31 @@
+# dependencies
+node_modules/
+
+# next.js
+.next/
+out/
+next-env.d.ts
+
+# production
+build/
+
+# local data (mongodb-memory-server)
+.data/
+
+# env files (never commit secrets)
+.env
+.env.*
+!.env.example
+
+# vercel
+.vercel/
+
+# logs and os files
+npm-debug.log*
+*.log
+.DS_Store
+Thumbs.db
+
+# editors
+.vscode/
+.idea/

@@ -1,0 +1,47 @@
+{
+  "name": "nails-art-reserve",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Reservas de citas para el salón de uñas Nails Art: portal público con ticket QR y panel de administración.",
+  "type": "module",
+  "engines": {
+    "node": ">=20.9.0"
+  },
+  "config": {
+    "mongodbMemoryServer": {
+      "version": "7.0.24"
+    }
+  },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "api": "node --env-file-if-exists=.env.local --env-file-if-exists=.env server/index.js",
+    "test": "node --test --test-concurrency=1 \"server/test/**/*.test.js\" \"shared/test/**/*.test.js\"",
+    "test:shared": "node --test \"shared/test/**/*.test.js\"",
+    "db:indexes": "node --env-file-if-exists=.env.local --env-file-if-exists=.env scripts/sync-indexes.js",
+    "seed:demo": "node --env-file-if-exists=.env.local --env-file-if-exists=.env scripts/seed-demo.js"
+  },
+  "dependencies": {
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "express": "^5.3.0",
+    "helmet": "^8.3.0",
+    "html5-qrcode": "^2.3.8",
+    "jsonwebtoken": "^9.0.3",
+    "lucide-react": "^1.73.0",
+    "mongoose": "^9.12.1",
+    "next": "^16.4.6",
+    "qrcode": "^1.5.4",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.21",
+    "mongodb-memory-server-core": "^11.3.0",
+    "postcss": "^8.5.6",
+    "supertest": "^7.3.2",
+    "tailwindcss": "^3.4.19"
+  }
+}

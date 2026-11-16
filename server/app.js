@@ -29,7 +29,7 @@ export function createApp() {
   const origins = env().corsOrigins;
   if (origins.length) app.use(cors({ origin: origins, credentials: true }));
 
-  app.use(express.json({ limit: '10mb' }));
+  app.use(express.json({ limit: '4mb' }));
   app.use(cookieParser());
   app.use((_req, res, next) => {
     res.set('Cache-Control', 'no-store');

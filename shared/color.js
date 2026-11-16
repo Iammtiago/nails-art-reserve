@@ -99,6 +99,10 @@ export function buildThemeTokens(colors = DEFAULT_THEME) {
     '--color-secondary-soft': mix(c.secondary, bg, 0.4),
     '--color-accent-soft': mix(c.accent, bg, 0.12),
   };
+  // RGB channel twins so Tailwind opacity modifiers (`border-line/70`, `bg-primary-soft/80`) work.
+  for (const name of ['text-2', 'text-3', 'line', 'primary-soft', 'secondary-soft', 'accent-soft']) {
+    tokens[`--color-${name}-rgb`] = rgbVar(tokens[`--color-${name}`]);
+  }
   return tokens;
 }
 

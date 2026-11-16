@@ -65,6 +65,15 @@ describe('schedule', () => {
     assert.equal(result.slots[0].time, '11:30'); // 10:30 < 9:45 + 60
   });
 
+  it('says the day is over (not full) once every start today has passed', () => {
+    const now = { date: SATURDAY, minutes: 17 * 60 + 45 }; // 17:45, last 2 h start was 17:00
+    const result = computeAvailability({ settings, date: SATURDAY, durationMinutes: 120, occupied: new Set(), now });
+    assert.equal(result.reason, 'ended');
+    const earlier = { date: SATURDAY, minutes: 16 * 60 + 30 }; // 18:00 still ahead (lead 60 min)
+    const taken = computeAvailability({ settings, date: SATURDAY, durationMinutes: 60, occupied: new Set(ticksFor(1080, 60)), now: earlier });
+    assert.equal(taken.reason, 'full'); // the only start left is booked
+  });
+
   it('rejects closed, blocked, past and out-of-window dates', () => {
     const now = { date: '2026-11-16', minutes: 600 };
     const run = (date, s = settings) =>

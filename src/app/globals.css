@@ -1,0 +1,259 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/*
+ * Design tokens. The five brand colors (--color-primary, --color-secondary, --color-accent,
+ * --color-bg, --color-text) are editable from /admin/configuracion; the layout injects the
+ * saved palette (and every derived token) in a <style> tag that overrides these defaults.
+ * Defaults = paleta A «Lila claro» from the Nails Art logo.
+ */
+:root {
+  --color-primary: #4b1c71;
+  --color-secondary: #d3b0f4;
+  --color-accent: #8e3fc7;
+  --color-bg: #f8f2fe;
+  --color-text: #2a0f40;
+  --color-primary-rgb: 75 28 113;
+  --color-secondary-rgb: 211 176 244;
+  --color-accent-rgb: 142 63 199;
+  --color-bg-rgb: 248 242 254;
+  --color-text-rgb: 42 15 64;
+  --color-text-2: #57416a;
+  --color-text-3: #746184;
+  --color-primary-ink: #4b1c71;
+  --color-accent-ink: #8e3fc7;
+  --color-on-primary: #ffffff;
+  --color-on-secondary: #2a0f40;
+  --color-on-accent: #ffffff;
+  --color-surface: #fdfbff;
+  --color-surface-rgb: 253 251 255;
+  --color-line: #e7d4fa;
+  --color-primary-soft: #e7ddf0;
+  --color-secondary-soft: #e9d8fa;
+  --color-accent-soft: #ebddf7;
+  --color-text-2-rgb: 87 65 106;
+  --color-text-3-rgb: 116 97 132;
+  --color-line-rgb: 231 212 250;
+  --color-primary-soft-rgb: 231 221 240;
+  --color-secondary-soft-rgb: 233 216 250;
+  --color-accent-soft-rgb: 235 221 247;
+
+  --glass-blur: 20px;
+  --radius-card: 1.25rem;
+  color-scheme: light;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-rendering: optimizeLegibility;
+  }
+
+  body {
+    @apply bg-bg font-sans text-ink antialiased;
+    min-height: 100dvh;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display tracking-tight text-ink;
+  }
+
+  ::selection {
+    background: rgb(var(--color-secondary-rgb) / 0.6);
+    color: var(--color-text);
+  }
+
+  :focus-visible {
+    outline: 3px solid rgb(var(--color-accent-rgb) / 0.55);
+    outline-offset: 2px;
+    border-radius: 0.5rem;
+  }
+
+  input[type='time']::-webkit-calendar-picker-indicator,
+  input[type='date']::-webkit-calendar-picker-indicator {
+    opacity: 0.6;
+    cursor: pointer;
+  }
+}
+
+@layer components {
+  /* ---------- Liquid Glass ---------- */
+
+  /* Aurora behind everything: the glass needs something to refract. */
+  .aurora {
+    @apply pointer-events-none fixed inset-0 -z-10 overflow-hidden;
+  }
+  .aurora::before,
+  .aurora::after,
+  .aurora > span {
+    content: '';
+    position: absolute;
+    border-radius: 9999px;
+    filter: blur(70px);
+    opacity: 0.55;
+  }
+  .aurora::before {
+    width: 46vmax;
+    height: 46vmax;
+    left: -12vmax;
+    top: -14vmax;
+    background: radial-gradient(circle at 30% 30%, rgb(var(--color-secondary-rgb) / 0.95), transparent 65%);
+  }
+  .aurora::after {
+    width: 40vmax;
+    height: 40vmax;
+    right: -14vmax;
+    top: 18vh;
+    background: radial-gradient(circle at 60% 40%, rgb(var(--color-accent-rgb) / 0.35), transparent 65%);
+  }
+  .aurora > span {
+    width: 38vmax;
+    height: 38vmax;
+    left: 20vw;
+    bottom: -18vmax;
+    background: radial-gradient(circle, rgb(var(--color-primary-rgb) / 0.18), transparent 65%);
+  }
+  .aurora-animated::before,
+  .aurora-animated::after,
+  .aurora-animated > span {
+    @apply animate-drift;
+  }
+  .aurora-animated::after {
+    animation-delay: -9s;
+  }
+  .aurora-animated > span {
+    animation-delay: -17s;
+  }
+
+  .glass {
+    position: relative;
+    background: rgb(var(--color-surface-rgb) / 0.72);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    border-radius: var(--radius-card);
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.75) inset,
+      0 14px 36px -16px rgb(var(--color-primary-rgb) / 0.28);
+  }
+  /* Specular edge: a 1px masked gradient, brighter where the light hits. */
+  .glass::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    padding: 1px;
+    background: linear-gradient(
+      150deg,
+      rgb(255 255 255 / 0.95),
+      rgb(var(--color-secondary-rgb) / 0.55) 40%,
+      rgb(var(--color-primary-rgb) / 0.12)
+    );
+    -webkit-mask:
+      linear-gradient(#000 0 0) content-box,
+      linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask:
+      linear-gradient(#000 0 0) content-box exclude,
+      linear-gradient(#000 0 0);
+    pointer-events: none;
+  }
+  /* Use together with .glass: class="glass glass-strong" */
+  .glass.glass-strong {
+    background: rgb(var(--color-surface-rgb) / 0.9);
+  }
+
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass {
+      background: rgb(var(--color-surface-rgb) / 0.97);
+    }
+  }
+
+  /* ---------- Buttons ---------- */
+
+  .btn {
+    @apply relative inline-flex min-h-[44px] select-none items-center justify-center gap-2 whitespace-nowrap rounded-xl px-4 text-[0.95rem] font-semibold transition duration-200 ease-out disabled:cursor-not-allowed disabled:opacity-60;
+    -webkit-tap-highlight-color: transparent;
+  }
+  .btn:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+  .btn-sm {
+    @apply min-h-[44px] rounded-lg px-3 text-sm;
+  }
+  .btn-lg {
+    @apply min-h-[52px] rounded-2xl px-6 text-base;
+  }
+  .btn-primary {
+    @apply bg-primary text-primary-on shadow-lift hover:brightness-110;
+  }
+  .btn-secondary {
+    @apply border border-line bg-surface/80 text-primary-ink hover:border-secondary hover:bg-surface;
+  }
+  .btn-soft {
+    @apply bg-secondary-soft text-primary-ink hover:bg-secondary/60;
+  }
+  .btn-ghost {
+    @apply text-primary-ink hover:bg-primary-soft;
+  }
+  .btn-danger {
+    @apply bg-danger text-white hover:brightness-110;
+  }
+  .btn-whatsapp {
+    @apply bg-[#1A7F4B] text-white hover:brightness-110;
+  }
+
+  /* ---------- Fields ---------- */
+
+  .field-label {
+    @apply mb-1.5 block text-sm font-semibold text-ink;
+  }
+  .field-hint {
+    @apply mt-1.5 text-[0.8rem] text-ink-3;
+  }
+  .field-error {
+    @apply mt-1.5 flex items-start gap-1.5 text-[0.8rem] font-medium text-danger;
+  }
+  .input {
+    @apply block min-h-[48px] w-full rounded-xl border border-line bg-surface/90 px-3.5 text-base text-ink shadow-sm outline-none transition placeholder:text-ink-3 focus:border-accent focus:shadow-focus disabled:opacity-60;
+  }
+  .input[aria-invalid='true'] {
+    @apply border-danger focus:shadow-[0_0_0_3px_rgb(180_35_53/0.25)];
+  }
+  select.input {
+    @apply cursor-pointer appearance-none bg-no-repeat pr-10;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%236E5C84' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+    background-position: right 0.75rem center;
+  }
+
+  /* ---------- Misc ---------- */
+
+  .chip {
+    @apply inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold;
+  }
+  .section-title {
+    @apply font-display text-xl font-semibold text-ink sm:text-2xl;
+  }
+  .eyebrow {
+    @apply text-xs font-semibold uppercase tracking-[0.14em] text-accent-ink;
+  }
+  .enter {
+    @apply animate-fade-up;
+  }
+  .code-text {
+    @apply font-mono tracking-[0.28em];
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

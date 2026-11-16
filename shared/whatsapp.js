@@ -23,5 +23,5 @@ export function bookingConfirmationText({ businessName, clientName, serviceName,
 /** Message the salon sends to a client from the admin panel. */
 export function clientContactText({ businessName, clientName, serviceName, date, time }) {
   const firstName = String(clientName || '').trim().split(/\s+/)[0] || '';
-  return `Hola ${firstName}, te escribimos de ${businessName} sobre tu cita de ${serviceName} del ${formatDateLong(date).toLowerCase()} a las ${formatTime(time)}.`;
+  return `Hola ${firstName}, te escribimos de ${businessName} sobre tu cita de ${serviceName} del ${formatDateLong(date).toLowerCase()} a las ${formatTime(time).replace(/\.$/, '')}.`;
 }

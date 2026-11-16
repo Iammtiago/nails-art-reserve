@@ -97,7 +97,9 @@ export function computeAvailability({ settings, date, durationMinutes, occupied,
     });
 
   const anyFree = slots.some((s) => s.available);
-  return { date, bookable: anyFree, reason: anyFree ? null : 'full', slots };
+  // Today with every start already behind us: the day is over, not fully booked.
+  const reason = anyFree ? null : slots.length === 0 && date === now.date ? 'ended' : 'full';
+  return { date, bookable: anyFree, reason, slots };
 }
 
 /** Is `time` a valid, free start for this service right now? Returns the slot or a reason. */
@@ -106,7 +108,7 @@ export function checkSlot({ settings, date, time, durationMinutes, occupied, now
   const slot = result.slots.find((s) => s.time === time);
   if (slot?.available) return { ok: true, slot };
   if (slot) return { ok: false, reason: 'taken' };
-  if (!result.bookable && result.reason && result.reason !== 'full') return { ok: false, reason: result.reason };
+  if (!result.bookable && result.reason && !['full', 'ended'].includes(result.reason)) return { ok: false, reason: result.reason };
   return { ok: false, reason: 'invalid_time' };
 }
 
@@ -116,4 +118,5 @@ export const DATE_REASON_LABELS = Object.freeze({
   blocked: 'Ese día el salón no atiende.',
   closed: 'Ese día el salón está cerrado.',
   full: 'Ese día ya no quedan horarios libres.',
+  ended: 'Por hoy ya no quedan horarios.',
 });

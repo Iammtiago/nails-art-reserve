@@ -1,6 +1,6 @@
 # Nails Art · Brief de la primera versión
 
-Fecha: 2026-11-16 · Autor: Dev (con Tiago) · Estado: pendiente de visto bueno
+Fecha: 2026-11-16 · Autor: Dev (con Tiago) · Estado: aprobado por Tiago el 2026-11-16 (con el cambio del superadmin del mismo día)
 
 ## 1. Negocio y objetivo
 
@@ -28,7 +28,8 @@ Tipo: **reservas y agenda**, un solo negocio (no multi-cliente).
 
 - **Portal público `/`** (móvil primero): cabecera con logo, nombre e Instagram; reserva en 4 pasos (Servicio → Fecha y hora → Tus datos → Ticket); botón **Cancelar cita**.
 - **Ticket digital**: QR, código de 6 caracteres grande con copiar, resumen (nombre, servicio, fecha, hora), **Guardar en galería** (PNG dibujado en canvas; en móvil abre el menú de compartir para guardarlo en Fotos) y **Confirmar por WhatsApp** al número del salón con el mensaje pedido.
-- **Panel `/admin`** con contraseña (`ADMIN_PASSWORD`) y 5 secciones: Configuración, Calendario, Citas, Clientes, Escanear código.
+- **Panel `/admin`** con usuario y contraseña del **superadmin** y 5 secciones: Configuración, Calendario, Citas, Clientes, Escanear código.
+- **Alta única del superadmin** en `/admin/setup` (decisión de Tiago, 2026-11-16): ninguna credencial pasa por el chat ni por el código. Tiago crea la cuenta él mismo cuando todo esté desplegado; la página se bloquea sola en cuanto existe la cuenta, y cuando Tiago confirme que entró se retira del código.
 
 **Fuera de la v1** (se propone, no se construye): precios y cobros, recordatorios automáticos, lista de espera, varias manicuristas, archivo `.ics`, cuentas de clienta, tema oscuro.
 
@@ -37,7 +38,7 @@ Tipo: **reservas y agenda**, un solo negocio (no multi-cliente).
 | Rol | Cómo entra | Puede |
 |---|---|---|
 | Clienta | Sin cuenta | Ver servicios y horarios libres, reservar, ver y cancelar sus citas activas escribiendo su teléfono |
-| Administración (salón) | Contraseña `ADMIN_PASSWORD` | Todo el panel: configuración, calendario, citas, clientas, verificación y asistencia |
+| Superadmin (salón) | Usuario y contraseña creados por Tiago en `/admin/setup` (una sola vez) | Todo el panel: configuración, calendario, citas, clientas, verificación y asistencia |
 
 El servidor exige la sesión de administración en todas las rutas del panel, en `PUT /api/settings` y en la verificación de códigos. La interfaz solo oculta.
 
@@ -83,7 +84,8 @@ El servidor exige la sesión de administración en todas las rutas del panel, en
 | Datos | MongoDB Atlas + Mongoose 9, conexión cacheada | Lo pide el encargo; encaja con Vercel y la integración del Marketplace (`MONGODB_URI`) |
 | Validación | zod 4, esquemas compartidos en `shared/` | Misma regla en cliente y servidor |
 | QR | `qrcode` (servidor) y `html5-qrcode` (escáner) | Lo pide el encargo |
-| Sesión | Cookie `HttpOnly` con JWT firmado (12 h) | Un solo rol con contraseña; sin tabla de usuarios |
+| Sesión | Cookie `HttpOnly` con JWT firmado (12 h); contraseña con scrypt | Un solo rol (superadmin). El secreto de firma sale de `ADMIN_SESSION_SECRET` o, si no existe, se genera al azar y se guarda en la base |
+| Alta del superadmin | `/admin/setup` + `POST /api/auth/setup`, exige `ADMIN_SETUP_KEY` | La clave la pone Tiago en Vercel; impide que otra persona cree la cuenta antes que él |
 | Local sin Atlas | `mongodb-memory-server` con datos en `.data/` | Arrancar y probar sin instalar MongoDB |
 
 Nota: en un proyecto Next.js, Vercel no usa la carpeta raíz `api/` (es para otros frameworks); por eso Express va dentro de `pages/api` y `vercel.json` configura esa función.
@@ -127,6 +129,8 @@ Los cinco se editan en Configuración; el panel avisa si una combinación no pas
 - Bloquear un día no cancela citas existentes.
 - Rutas de la API sin versión (`/api/settings`, no `/api/v1`), tal como las pidió el encargo.
 - Límite de intentos de acceso al panel: 5 cada 15 min por IP, guardado en MongoDB (sirve en serverless).
+- El alta del superadmin exige además la variable `ADMIN_SETUP_KEY` (12+ caracteres) que Tiago define en Vercel.
+- Los índices se crean en la primera conexión de cada instancia (idempotente): el índice único de horarios es lo que impide la doble reserva y no puede faltar.
 
 **PENDIENTE**
 
@@ -134,3 +138,5 @@ Los cinco se editan en Configuración; el panel avisa si una combinación no pas
 - Precios de los servicios (si se quieren mostrar).
 - Logo en alta resolución o vectorial (hoy se usa el JPG recibido).
 - Deploy en Vercel y base en Atlas: cuando Tiago lo ordene.
+- Tras el deploy: Tiago crea el superadmin en `/admin/setup`, avisa, y Dev retira la página y la ruta de alta en un PR aparte.
+- Recuperar el acceso si se olvida la contraseña: hoy no hay flujo de recuperación (habría que proponerlo).

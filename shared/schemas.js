@@ -113,7 +113,7 @@ export const usernameField = z
 
 export const passwordField = z
   .string({ error: 'Escribe la contraseña.' })
-  .min(10, 'La contraseña necesita al menos 10 caracteres.')
+  .min(6, 'La contraseña necesita al menos 6 caracteres.')
   .max(128, 'La contraseña es demasiado larga.');
 
 export const loginSchema = z.strictObject({
@@ -135,7 +135,6 @@ export const accountSchema = z
   })
   .refine(...passwordsMatch);
 
-export const setupSchema = accountSchema;
 
 /** currentPassword is required (and checked in the service) only when changing your own password. */
 export const changePasswordSchema = z

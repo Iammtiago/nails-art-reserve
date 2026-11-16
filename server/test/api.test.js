@@ -19,17 +19,13 @@ const book = (body) => request(app).post('/api/appointments').set(CSRF).send(bod
 
 async function loginAgent() {
   const agent = request.agent(app);
-  const status = await agent.get('/api/auth/status');
-  if (status.body.setupAvailable) {
-    const created = await agent
-      .post('/api/auth/setup')
-      .set(CSRF)
-      .send({ username: 'tiago', password: 'una-clave-muy-larga', passwordConfirm: 'una-clave-muy-larga' });
-    assert.equal(created.status, 201, JSON.stringify(created.body));
-  } else {
-    const res = await agent.post('/api/auth/login').set(CSRF).send({ username: 'tiago', password: 'una-clave-muy-larga' });
-    assert.equal(res.status, 200, JSON.stringify(res.body));
+  const { AdminUser } = await import('../models/index.js');
+  if (!(await AdminUser.exists({ username: 'tiago' }))) {
+    const { hashPassword } = await import('../lib/password.js');
+    await AdminUser.create({ username: 'tiago', passwordHash: await hashPassword('una-clave-muy-larga'), role: 'superadmin' });
   }
+  const res = await agent.post('/api/auth/login').set(CSRF).send({ username: 'tiago', password: 'una-clave-muy-larga' });
+  assert.equal(res.status, 200, JSON.stringify(res.body));
   return agent;
 }
 
@@ -185,28 +181,25 @@ describe('admin', () => {
     assert.equal((await request(app).post('/api/appointments/verify').set(CSRF).send({ code: 'NA84K2' })).status, 401);
   });
 
-  it('runs the one-time superadmin setup and then locks it', async () => {
-    const statusBefore = await request(app).get('/api/auth/status');
-    assert.equal(statusBefore.body.setupAvailable, true);
-
-    const mismatch = await request(app)
+  it('no longer exposes the one-time setup (removed 2026-11-16)', async () => {
+    const setup = await request(app)
       .post('/api/auth/setup')
       .set(CSRF)
-      .send({ username: 'tiago', password: 'una-clave-muy-larga', passwordConfirm: 'otra-clave' });
-    assert.equal(mismatch.status, 422);
-    assert.equal(mismatch.body.details[0].path, 'passwordConfirm');
-
+      .send({ username: 'intruso', password: 'clave-larga', passwordConfirm: 'clave-larga' });
+    assert.equal(setup.status, 404);
     const agent = await loginAgent();
     const session = await agent.get('/api/auth/session');
     assert.equal(session.status, 200);
     assert.equal(session.body.admin.username, 'tiago');
+  });
 
-    const second = await request(app)
-      .post('/api/auth/setup')
-      .set(CSRF)
-      .send({ username: 'otro', password: 'otra-clave-muy-larga', passwordConfirm: 'otra-clave-muy-larga' });
-    assert.equal(second.status, 410);
-    assert.equal((await request(app).get('/api/auth/status')).body.setupAvailable, false);
+  it('accepts 6-character passwords for new accounts', async () => {
+    const agent = await loginAgent();
+    const short = await agent.post('/api/admin/accounts').set(CSRF).send({ username: 'corta', password: '12345', passwordConfirm: '12345' });
+    assert.equal(short.status, 422);
+    const ok = await agent.post('/api/admin/accounts').set(CSRF).send({ username: 'seis', password: 'abc123', passwordConfirm: 'abc123' });
+    assert.equal(ok.status, 201);
+    await agent.delete(`/api/admin/accounts/${ok.body.account.id}`).set(CSRF);
   });
 
   it('manages panel accounts: create, list, reset, own password and delete', async () => {

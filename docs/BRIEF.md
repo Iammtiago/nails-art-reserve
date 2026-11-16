@@ -29,7 +29,7 @@ Tipo: **reservas y agenda**, un solo negocio (no multi-cliente).
 - **Portal público `/`** (móvil primero): cabecera con logo, nombre e Instagram; reserva en 4 pasos (Servicio → Fecha y hora → Tus datos → Ticket); botón **Cancelar cita**.
 - **Ticket digital**: QR, código de 6 caracteres grande con copiar, resumen (nombre, servicio, fecha, hora), **Guardar en galería** (PNG dibujado en canvas; en móvil abre el menú de compartir para guardarlo en Fotos) y **Confirmar por WhatsApp** al número del salón con el mensaje pedido.
 - **Panel `/admin`** con usuario y contraseña y 5 secciones: Configuración, Calendario, Citas, Clientes, Escanear código; más **Cuentas** (2026-11-16).
-- **Alta única del superadmin** en `/admin/setup` (decisión de Tiago, 2026-11-16, ajustada esa misma tarde): ninguna credencial pasa por el chat ni por el código. La página queda **abierta sin clave** hasta que exista la primera cuenta; Tiago la crea nada más desplegar, y desde **Cuentas** crea la de la manicurista. Cuando confirme que las creó, la página y su ruta se retiran del código.
+- **Alta única del superadmin** en `/admin/setup` (decisión de Tiago, 2026-11-16, ajustada esa misma tarde): ninguna credencial pasa por el chat ni por el código. La página queda **abierta sin clave** hasta que exista la primera cuenta; Tiago la crea nada más desplegar, y desde **Cuentas** crea la de la manicurista. Tiago la creó el 2026-11-16 y el alta se retiró del código ese mismo día; contraseñas de 6+ caracteres (pedido de Tiago).
 - **Landing (2026-11-16):** cabecera fija con Agendar, Cancelar y Llamar; hero con estado abierto/cerrado en vivo y la frase «No existen manos feas, solo uñas sin cita.» (inspirada en la que propuso Tiago); debajo de la reserva: cómo funciona, lo que debes saber (de Configuración), frase destacada, horario, contacto, preguntas frecuentes y llamado final.
 
 **Fuera de la v1** (se propone, no se construye): precios y cobros, recordatorios automáticos, lista de espera, varias manicuristas, archivo `.ics`, cuentas de clienta, tema oscuro.
@@ -139,5 +139,4 @@ Los cinco se editan en Configuración; el panel avisa si una combinación no pas
 - Precios de los servicios (si se quieren mostrar).
 - Logo en alta resolución o vectorial (hoy se usa el JPG recibido).
 - Deploy en Vercel y base en Atlas: cuando Tiago lo ordene.
-- Tras el deploy: Tiago crea su cuenta en `/admin/setup` y la de la manicurista en Cuentas, avisa, y Dev retira la página y la ruta de alta y despliega el cambio.
 - Recuperar el acceso si se olvida la contraseña: la otra cuenta le pone una nueva desde Cuentas. Si ambas la olvidan, no hay flujo por correo (habría que proponerlo).

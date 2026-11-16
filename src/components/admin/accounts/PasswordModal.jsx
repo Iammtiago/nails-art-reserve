@@ -27,7 +27,7 @@ function PasswordForm({ account, onDone, onCancel }) {
     event.preventDefault();
     const local = {};
     if (self && !form.currentPassword) local.currentPassword = 'Escribe tu contraseña actual.';
-    if (form.password.length < 10) local.password = 'La contraseña necesita al menos 10 caracteres.';
+    if (form.password.length < 6) local.password = 'La contraseña necesita al menos 6 caracteres.';
     if (form.password !== form.passwordConfirm) local.passwordConfirm = 'Las contraseñas no coinciden.';
     if (Object.keys(local).length) {
       setErrors(local);
@@ -54,7 +54,7 @@ function PasswordForm({ account, onDone, onCancel }) {
           {(p) => <PasswordInput {...p} value={form.currentPassword} onChange={update('currentPassword')} autoComplete="current-password" />}
         </Field>
       ) : null}
-      <Field label="Nueva contraseña" hint="Mínimo 10 caracteres." error={errors.password}>
+      <Field label="Nueva contraseña" hint="Mínimo 6 caracteres." error={errors.password}>
         {(p) => <PasswordInput {...p} value={form.password} onChange={update('password')} autoComplete="new-password" />}
       </Field>
       <Field label="Repite la nueva contraseña" error={errors.passwordConfirm}>

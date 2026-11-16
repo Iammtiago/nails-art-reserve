@@ -42,7 +42,9 @@ describe('public settings and availability', () => {
     assert.equal(res.body.settings.businessName, 'Nails Art');
     assert.equal(res.body.settings.services.length, 3);
     assert.equal(res.body.settings.now.date, TODAY);
-    assert.equal(res.body.settings.booking.maxActivePerPhone, undefined, 'admin-only rule must not leak');
+    // Shown to clients in «Lo que debes saber» since 2026-11-16 (the booking error already states it).
+    assert.equal(res.body.settings.booking.maxActivePerPhone, 3);
+    assert.equal(res.body.settings.blockedDates.every((b) => b.reason === undefined), true, 'block reasons stay admin-only');
   });
 
   it('lists starts that fit each service', async () => {

@@ -1,0 +1,81 @@
+import { APPOINTMENT_STATUS } from '../../shared/constants.js';
+import { dayCapacityMinutes, daySegments, getDayConfig } from '../../shared/schedule.js';
+import { addDays, dayOfWeek } from '../../shared/time.js';
+import { unprocessable } from '../lib/errors.js';
+import { Appointment } from '../models/index.js';
+import { blockDate, businessNow, getSettingsDoc, unblockDate } from './settings.service.js';
+
+/** Occupancy per day plus the appointments of the range, for the admin calendar. */
+export async function getCalendar({ from, to }) {
+  const settings = await getSettingsDoc();
+  const now = businessNow(settings);
+  const appointments = await Appointment.find(
+    { date: { $gte: from, $lte: to }, status: { $ne: APPOINTMENT_STATUS.CANCELLED } },
+    { clientName: 1, clientPhone: 1, serviceName: 1, durationMinutes: 1, date: 1, timeSlot: 1, endTime: 1, status: 1, bookingCode: 1 },
+  )
+    .sort({ date: 1, timeSlot: 1 })
+    .lean();
+
+  const byDate = new Map();
+  for (const a of appointments) {
+    if (!byDate.has(a.date)) byDate.set(a.date, []);
+    byDate.get(a.date).push(a);
+  }
+  const blocked = new Map((settings.blockedDates || []).map((b) => [b.date, b.reason]));
+
+  const days = [];
+  for (let date = from; date <= to; date = addDays(date, 1)) {
+    const day = getDayConfig(settings.workingHours, date);
+    const list = byDate.get(date) || [];
+    const capacityMinutes = dayCapacityMinutes(day);
+    const bookedMinutes = list.reduce((sum, a) => sum + a.durationMinutes, 0);
+    days.push({
+      date,
+      dayOfWeek: dayOfWeek(date),
+      isOpen: daySegments(day).length > 0,
+      blocked: blocked.has(date),
+      blockReason: blocked.get(date) || '',
+      isPast: date < now.date,
+      isToday: date === now.date,
+      capacityMinutes,
+      bookedMinutes,
+      appointmentsCount: list.length,
+      pendingCount: list.filter((a) => a.status === APPOINTMENT_STATUS.CONFIRMED).length,
+      occupancy: capacityMinutes ? Math.min(1, Math.round((bookedMinutes / capacityMinutes) * 100) / 100) : 0,
+    });
+  }
+
+  return {
+    from,
+    to,
+    now,
+    workingHours: settings.workingHours,
+    days,
+    appointments: appointments.map((a) => ({
+      id: String(a._id),
+      clientName: a.clientName,
+      clientPhone: a.clientPhone,
+      serviceName: a.serviceName,
+      durationMinutes: a.durationMinutes,
+      date: a.date,
+      timeSlot: a.timeSlot,
+      endTime: a.endTime,
+      status: a.status,
+      bookingCode: a.bookingCode,
+    })),
+  };
+}
+
+export async function addBlockedDate({ date, reason }) {
+  const settings = await getSettingsDoc();
+  const now = businessNow(settings);
+  if (date < now.date) throw unprocessable('No se puede bloquear un día que ya pasó.', 'PAST_DATE');
+  const updated = await blockDate({ date, reason });
+  const affected = await Appointment.countDocuments({ date, status: APPOINTMENT_STATUS.CONFIRMED });
+  return { blockedDates: updated.blockedDates, affectedAppointments: affected };
+}
+
+export async function removeBlockedDate(date) {
+  const updated = await unblockDate(date);
+  return { blockedDates: updated.blockedDates };
+}

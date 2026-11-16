@@ -4,6 +4,11 @@ const nextConfig = {
   poweredByHeader: false,
   // Server-only packages loaded by the Express API mounted in src/pages/api.
   serverExternalPackages: ['mongoose', 'mongodb', 'mongodb-memory-server-core', 'qrcode'],
+  // Local-only folders: the in-memory MongoDB files (.data) are locked while `npm run dev` runs
+  // and must never be traced into a serverless bundle.
+  outputFileTracingExcludes: {
+    '*': ['.data/**', 'scripts/**', 'docs/**', 'server/test/**', 'shared/test/**'],
+  },
   async headers() {
     return [
       {

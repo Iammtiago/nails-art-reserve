@@ -2,6 +2,7 @@
 
 import { UserPlus } from 'lucide-react';
 import { useState } from 'react';
+import { accountSchema, fieldErrorsFor } from '@shared/schemas.js';
 import { ApiError, apiPost } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Field';
@@ -10,13 +11,7 @@ import { PasswordInput } from '@/components/ui/PasswordInput';
 
 const EMPTY = { username: '', password: '', passwordConfirm: '' };
 
-function validate(form) {
-  const e = {};
-  if (!/^[a-zA-Z0-9._-]{3,40}$/.test(form.username.trim())) e.username = 'Usa de 3 a 40 letras sin acentos, números, punto o guion.';
-  if (form.password.length < 10) e.password = 'La contraseña necesita al menos 10 caracteres.';
-  if (form.password !== form.passwordConfirm) e.passwordConfirm = 'Las contraseñas no coinciden.';
-  return e;
-}
+const validate = (form) => fieldErrorsFor(accountSchema, form);
 
 /** Mounted only while open, so the form starts clean every time. */
 function AccountForm({ onCreated, onCancel }) {

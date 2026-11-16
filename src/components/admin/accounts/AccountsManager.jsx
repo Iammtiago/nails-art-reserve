@@ -3,6 +3,7 @@
 import { KeyRound, LifeBuoy, PartyPopper, ShieldCheck, Trash2, UserPlus, Users } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { useState } from 'react';
+import { DEFAULT_TIMEZONE, LIMITS } from '@shared/constants.js';
 import { apiDelete, apiGet } from '@/lib/api';
 import { useAsync } from '@/lib/hooks';
 import { Badge } from '@/components/ui/Badge';
@@ -15,17 +16,11 @@ import { useAdmin } from '../AdminContext';
 import { AccountFormModal } from './AccountFormModal';
 import { PasswordModal } from './PasswordModal';
 
-const TIMEZONE = 'America/Caracas';
+const instantFormat = new Intl.DateTimeFormat('es-VE', { dateStyle: 'medium', timeStyle: 'short', timeZone: DEFAULT_TIMEZONE });
+const dayFormat = new Intl.DateTimeFormat('es-VE', { dateStyle: 'long', timeZone: DEFAULT_TIMEZONE });
 
-function formatInstant(value) {
-  if (!value) return '';
-  return new Intl.DateTimeFormat('es-VE', { dateStyle: 'medium', timeStyle: 'short', timeZone: TIMEZONE }).format(new Date(value));
-}
-
-function formatDay(value) {
-  if (!value) return '';
-  return new Intl.DateTimeFormat('es-VE', { dateStyle: 'long', timeZone: TIMEZONE }).format(new Date(value));
-}
+const formatInstant = (value) => (value ? instantFormat.format(new Date(value)) : '');
+const formatDay = (value) => (value ? dayFormat.format(new Date(value)) : '');
 
 function Avatar({ name, self }) {
   const initial = (name || '?').slice(0, 1).toUpperCase();
@@ -87,7 +82,7 @@ export function AccountsManager() {
   const [passwordFor, setPasswordFor] = useState(null);
 
   const items = state.data?.items || [];
-  const max = state.data?.max || 5;
+  const max = state.data?.max || LIMITS.accountsMax;
   const full = items.length >= max;
   const onlyMe = items.length === 1;
 

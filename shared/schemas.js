@@ -306,3 +306,12 @@ export const settingsUpdateSchema = z
 export function issuesToDetails(error) {
   return (error?.issues || []).map((i) => ({ path: i.path.join('.'), message: i.message }));
 }
+
+/** { field: firstMessage } from a schema, for inline form errors in the UI ({} when valid). */
+export function fieldErrorsFor(schema, value) {
+  const result = schema.safeParse(value);
+  if (result.success) return {};
+  const errors = {};
+  for (const d of issuesToDetails(result.error)) if (!errors[d.path]) errors[d.path] = d.message;
+  return errors;
+}

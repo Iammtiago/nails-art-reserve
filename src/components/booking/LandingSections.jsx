@@ -42,7 +42,7 @@ function SectionHeading({ eyebrow, title, description, id, center = false }) {
 // ---------- Así de fácil ----------
 
 const STEPS = [
-  { icon: Hand, title: 'Elige tu servicio', text: 'Manicura, pedicura o las dos. Verás solo los días y horas que de verdad están libres.' },
+  { icon: Hand, title: 'Elige tu servicio', text: 'Escoge lo que te vas a hacer. Verás solo los días y horas que de verdad están libres.' },
   { icon: UserRound, title: 'Deja tu nombre y teléfono', text: 'Sin cuentas ni contraseñas. Tu teléfono es tu llave para ver o cancelar tu cita.' },
   { icon: QrCode, title: 'Muestra tu ticket al llegar', text: 'Guárdalo en tu galería. En el salón escanean tu código QR o tu clave de 6 caracteres.' },
 ];

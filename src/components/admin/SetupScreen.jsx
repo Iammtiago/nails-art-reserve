@@ -7,6 +7,7 @@
 import { CheckCircle2, ShieldCheck, Sparkles, UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { fieldErrorsFor, setupSchema } from '@shared/schemas.js';
 import { ApiError, apiGet, apiPost } from '@/lib/api';
 import { useAsync } from '@/lib/hooks';
 import { Button } from '@/components/ui/Button';
@@ -16,13 +17,7 @@ import { ErrorState, LoadingState } from '@/components/ui/States';
 
 const EMPTY = { username: '', password: '', passwordConfirm: '' };
 
-function validateLocally(form) {
-  const e = {};
-  if (!/^[a-zA-Z0-9._-]{3,40}$/.test(form.username.trim())) e.username = 'Usa de 3 a 40 letras sin acentos, números, punto o guion.';
-  if (form.password.length < 10) e.password = 'La contraseña necesita al menos 10 caracteres.';
-  if (form.password !== form.passwordConfirm) e.passwordConfirm = 'Las contraseñas no coinciden.';
-  return e;
-}
+const validateLocally = (form) => fieldErrorsFor(setupSchema, form);
 
 export function SetupScreen() {
   const router = useRouter();

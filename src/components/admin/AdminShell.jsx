@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarDays, ClipboardList, LogOut, QrCode, Settings, Users } from 'lucide-react';
+import { CalendarDays, ClipboardList, ExternalLink, LogOut, QrCode, Settings, UserCog, Users } from 'lucide-react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useCallback, useMemo } from 'react';
@@ -19,6 +19,15 @@ export const ADMIN_NAV = [
   { href: '/admin/clientes', label: 'Clientes', icon: Users },
   { href: '/admin/configuracion', label: 'Configuración', icon: Settings },
 ];
+
+// Outside the bottom bar (five items already fill a 360 px screen): sidebar on desktop, top bar on mobile.
+const ACCOUNTS_NAV = { href: '/admin/cuentas', label: 'Cuentas', icon: UserCog };
+
+function greeting(hour) {
+  if (hour < 12) return 'Buenos días';
+  if (hour < 19) return 'Buenas tardes';
+  return 'Buenas noches';
+}
 
 function NavLink({ item, active, compact }) {
   const Icon = item.icon;
@@ -106,6 +115,10 @@ export function AdminShell({ children }) {
 
   const businessName = settingsState.data?.businessName || 'Nails Art';
   const logoUrl = settingsState.data?.logoUrl;
+  const username = status.data?.admin?.username || '';
+  const nowMinutes = settingsState.data?.now?.minutes;
+  const hello = typeof nowMinutes === 'number' ? greeting(Math.floor(nowMinutes / 60)) : 'Hola';
+  const accountsActive = pathname?.startsWith(ACCOUNTS_NAV.href);
 
   return (
     <AdminContext.Provider value={value}>
@@ -128,12 +141,24 @@ export function AdminShell({ children }) {
                 <NavLink key={item.href} item={item} active={pathname?.startsWith(item.href)} />
               ))}
             </nav>
-            <div className="mt-4 border-t border-line pt-4">
-              <p className="mb-2 truncate px-1 text-xs text-ink-3">
-                Sesión: <span className="font-semibold text-ink-2">{status.data?.admin?.username}</span>
-              </p>
-              <button type="button" onClick={logout} className="btn btn-ghost btn-sm w-full justify-start">
-                <LogOut aria-hidden="true" className="h-4 w-4" />
+            <div className="mt-4 space-y-1 border-t border-line pt-4">
+              <div className="mb-3 flex items-center gap-2.5 rounded-2xl bg-primary-soft/60 px-3 py-2.5">
+                <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary font-display text-base font-semibold text-primary-on">
+                  {username.slice(0, 1).toUpperCase()}
+                </span>
+                <div className="min-w-0">
+                  <p className="text-xs text-ink-3">{hello},</p>
+                  <p className="truncate text-sm font-semibold text-ink">{username}</p>
+                </div>
+              </div>
+              <NavLink item={ACCOUNTS_NAV} active={accountsActive} />
+              <a href="/" target="_blank" rel="noopener noreferrer" className="flex min-h-[46px] items-center gap-3 rounded-xl px-3 text-sm font-semibold text-ink-2 transition hover:bg-primary-soft hover:text-ink">
+                <ExternalLink aria-hidden="true" className="h-5 w-5" />
+                Ver página de reservas
+                <span className="sr-only"> (se abre en otra pestaña)</span>
+              </a>
+              <button type="button" onClick={logout} className="flex min-h-[46px] w-full items-center gap-3 rounded-xl px-3 text-sm font-semibold text-ink-2 transition hover:bg-danger-soft hover:text-danger">
+                <LogOut aria-hidden="true" className="h-5 w-5" />
                 Cerrar sesión
               </button>
             </div>
@@ -146,12 +171,27 @@ export function AdminShell({ children }) {
             <div className="glass flex items-center justify-between gap-3 rounded-2xl px-3 py-2">
               <div className="flex min-w-0 items-center gap-2.5">
                 <BrandLogo src={logoUrl} name={businessName} size={36} />
-                <p className="truncate font-display text-base font-semibold">{businessName}</p>
+                <div className="min-w-0">
+                  <p className="truncate font-display text-base font-semibold leading-tight">{businessName}</p>
+                  <p className="truncate text-xs text-ink-3">
+                    {hello}, <span className="font-semibold text-ink-2">{username}</span>
+                  </p>
+                </div>
               </div>
-              <button type="button" onClick={logout} className="btn btn-ghost btn-sm" aria-label="Cerrar sesión">
-                <LogOut aria-hidden="true" className="h-4 w-4" />
-                <span className="hidden sm:inline">Salir</span>
-              </button>
+              <div className="flex shrink-0 items-center gap-1">
+                <Link
+                  href={ACCOUNTS_NAV.href}
+                  aria-current={accountsActive ? 'page' : undefined}
+                  className={`btn btn-sm h-11 w-11 !px-0 ${accountsActive ? 'bg-secondary-soft text-primary-ink' : 'btn-ghost'}`}
+                  aria-label="Cuentas"
+                  title="Cuentas"
+                >
+                  <UserCog aria-hidden="true" className="h-5 w-5" />
+                </Link>
+                <button type="button" onClick={logout} className="btn btn-ghost btn-sm h-11 w-11 !px-0" aria-label="Cerrar sesión" title="Cerrar sesión">
+                  <LogOut aria-hidden="true" className="h-5 w-5" />
+                </button>
+              </div>
             </div>
           </header>
 

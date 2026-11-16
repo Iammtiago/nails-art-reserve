@@ -118,7 +118,8 @@ export async function createSuperadmin({ username, password }) {
 
   const passwordHash = await hashPassword(password);
   try {
-    const admin = await AdminUser.create({ username, passwordHash, role: 'superadmin', setupSlot: 'initial' });
+    // The setup signs you in, so it counts as your first access.
+    const admin = await AdminUser.create({ username, passwordHash, role: 'superadmin', setupSlot: 'initial', lastLoginAt: new Date() });
     return admin.toObject();
   } catch (error) {
     if (isDuplicateKey(error)) {

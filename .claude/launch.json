@@ -6,6 +6,17 @@
       "runtimeExecutable": "npm",
       "runtimeArgs": ["run", "dev"],
       "port": 3000
+    },
+    {
+      "name": "nails-art-alt",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--", "--port", "3100"],
+      "port": 3100,
+      "env": {
+        "NEXT_DIST_DIR": ".next-alt",
+        "LOCAL_DB_DIR": ".data/mongo-alt",
+        "MONGODB_URI": ""
+      }
     }
   ]
 }

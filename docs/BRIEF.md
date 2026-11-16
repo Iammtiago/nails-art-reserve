@@ -18,7 +18,7 @@ Datos reales tomados del Instagram público (confirmar):
 | Instagram | `https://www.instagram.com/nailsart.sc` |
 | Horario | Lunes a sábado 8:30–12:30 y 14:00–19:00 · domingo cerrado |
 | Zona horaria | `America/Caracas` (UTC−4) |
-| URL pública | `https://nails-art.vercel.app` |
+| URL pública | `https://nails-art-sc.vercel.app` |
 
 ## 2. Tipo, superficies y módulos
 
@@ -64,7 +64,7 @@ El servidor exige la sesión de administración en todas las rutas del panel, en
 
 **Cancelación**: solo con teléfono (decisión de Tiago). La clienta escribe su número, ve sus citas activas (sin código ni QR) y cancela tras confirmar. El servidor exige que el teléfono coincida con la cita. Se puede cancelar hasta la hora de inicio (`SUPUESTO`). Cancelar libera el horario al instante.
 
-**Código y QR**: código de 6 caracteres en mayúsculas, generado con `crypto` y alfabeto sin ambiguos (sin `0 O 1 I L`), único en la base. El QR codifica `https://nails-art.vercel.app/admin/escanear?codigo=NA84K2`: el panel lo lee con la cámara y la URL abre la verificación si se escanea con la cámara del teléfono.
+**Código y QR**: código de 6 caracteres en mayúsculas, generado con `crypto` y alfabeto sin ambiguos (sin `0 O 1 I L`), único en la base. El QR codifica `https://nails-art-sc.vercel.app/admin/escanear?codigo=NA84K2`: el panel lo lee con la cámara y la URL abre la verificación si se escanea con la cámara del teléfono.
 
 **Teléfono**: se normaliza a dígitos con código de país. Por defecto Venezuela (`0414 1234567` → `584141234567`); con `+` se acepta cualquier país (`SUPUESTO`).
 
@@ -114,7 +114,7 @@ Los cinco se editan en Configuración; el panel avisa si una combinación no pas
 
 - Código en `C:\Users\santi\OneDrive\Escritorio\Tiago\programacion\proyects\nails-art-reserve`.
 - Repositorio `Iammtiago/nails-art-reserve` (ya creado por Tiago, **público**: nunca se suben secretos). Primer commit de esqueleto en `main` (repo vacío, sin Vercel conectado aún); el resto en `feat/reservas-v1` con PR. El merge a `main` y el deploy los ordena Tiago.
-- Despliegue: proyecto Vercel `nails-art` → `https://nails-art.vercel.app`, MongoDB desde el Vercel Marketplace. Solo cuando Tiago lo diga.
+- Despliegue: proyecto Vercel `nails-art` → `https://nails-art-sc.vercel.app`, MongoDB desde el Vercel Marketplace. Solo cuando Tiago lo diga.
 - Entregables: código completo, `README.md` con guía CLI (git, GitHub, Vercel, Marketplace, variables, producción), `docs/API.md`, pruebas automáticas de lo crítico.
 
 ## 9. SUPUESTO y PENDIENTE

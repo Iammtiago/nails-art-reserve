@@ -84,7 +84,7 @@ npm run dev
 |---|---|---|
 | `MONGODB_URI` | Sí en producción | Conexión a MongoDB Atlas (la crea la integración del Marketplace de Vercel) |
 | `ADMIN_SETUP_KEY` | Para crear el superadmin | Clave que **tú** eliges (12+ caracteres) y escribes en `/admin/setup`. Puedes borrarla después |
-| `APP_URL` | Recomendada | URL pública (`https://nails-art.vercel.app`); va dentro del QR |
+| `APP_URL` | Recomendada | URL pública (`https://nails-art-sc.vercel.app`); va dentro del QR |
 | `ADMIN_SESSION_SECRET` | Opcional | Secreto de 32+ caracteres para firmar la sesión. Si falta, el servidor genera uno al azar y lo guarda en la base |
 | `CORS_ORIGINS`, `API_PORT` | Solo `npm run api` | Orígenes permitidos y puerto de la API suelta |
 
@@ -100,7 +100,7 @@ npm run dev
 ## Superadmin (sin credenciales en el chat ni en el código)
 
 1. En Vercel añade la variable `ADMIN_SETUP_KEY` con una clave que solo tú conozcas (12+ caracteres) y vuelve a desplegar.
-2. Entra a `https://nails-art.vercel.app/admin/setup`, escribe esa clave, tu usuario y tu contraseña (10+ caracteres).
+2. Entra a `https://nails-art-sc.vercel.app/admin/setup`, escribe esa clave, tu usuario y tu contraseña (10+ caracteres).
 3. La página se cierra sola al crear la cuenta (devuelve «ya fue creado»); desde ahí entras por `/admin`.
 4. Avísale a Dev: retirará la página y la ruta de alta del código en un PR aparte. Después puedes borrar `ADMIN_SETUP_KEY` de Vercel.
 
@@ -142,7 +142,7 @@ npm install -g vercel
 vercel login
 ```
 
-Vincula la carpeta a un proyecto llamado `nails-art` (así la URL será `nails-art.vercel.app` si el nombre está libre):
+Vincula la carpeta al proyecto `nails-art` (`nails-art.vercel.app` pertenece a otra cuenta; el dominio del proyecto es `nails-art-sc.vercel.app`):
 
 ```bash
 vercel link --project nails-art
@@ -171,7 +171,7 @@ vercel env ls
 ### 4. Variables de entorno
 
 ```bash
-vercel env add APP_URL production --value https://nails-art.vercel.app
+vercel env add APP_URL production --value https://nails-art-sc.vercel.app
 ```
 
 🔐 La clave de instalación la eliges tú (no la compartas en el chat):
@@ -201,7 +201,7 @@ vercel --prod
 Comprueba que responde:
 
 ```bash
-curl https://nails-art.vercel.app/api/health
+curl https://nails-art-sc.vercel.app/api/health
 ```
 
 Luego crea el superadmin (sección «Superadmin») y prueba una reserva completa desde el móvil.

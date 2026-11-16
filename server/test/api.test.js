@@ -3,7 +3,7 @@ import { after, before, beforeEach, describe, it } from 'node:test';
 import request from 'supertest';
 
 import { BOOKING_CODE_REGEX } from '../../shared/constants.js';
-import { CSRF, SATURDAY, SETUP_KEY, TODAY, booking, resetData, startTestApp, stopTestApp } from './helpers.js';
+import { CSRF, SATURDAY, TODAY, booking, resetData, startTestApp, stopTestApp } from './helpers.js';
 
 let app;
 
@@ -24,7 +24,7 @@ async function loginAgent() {
     const created = await agent
       .post('/api/auth/setup')
       .set(CSRF)
-      .send({ setupKey: SETUP_KEY, username: 'tiago', password: 'una-clave-muy-larga', passwordConfirm: 'una-clave-muy-larga' });
+      .send({ username: 'tiago', password: 'una-clave-muy-larga', passwordConfirm: 'una-clave-muy-larga' });
     assert.equal(created.status, 201, JSON.stringify(created.body));
   } else {
     const res = await agent.post('/api/auth/login').set(CSRF).send({ username: 'tiago', password: 'una-clave-muy-larga' });
@@ -187,11 +187,12 @@ describe('admin', () => {
     const statusBefore = await request(app).get('/api/auth/status');
     assert.equal(statusBefore.body.setupAvailable, true);
 
-    const badKey = await request(app)
+    const mismatch = await request(app)
       .post('/api/auth/setup')
       .set(CSRF)
-      .send({ setupKey: 'incorrecta', username: 'tiago', password: 'una-clave-muy-larga', passwordConfirm: 'una-clave-muy-larga' });
-    assert.equal(badKey.status, 403);
+      .send({ username: 'tiago', password: 'una-clave-muy-larga', passwordConfirm: 'otra-clave' });
+    assert.equal(mismatch.status, 422);
+    assert.equal(mismatch.body.details[0].path, 'passwordConfirm');
 
     const agent = await loginAgent();
     const session = await agent.get('/api/auth/session');
@@ -201,9 +202,66 @@ describe('admin', () => {
     const second = await request(app)
       .post('/api/auth/setup')
       .set(CSRF)
-      .send({ setupKey: SETUP_KEY, username: 'otro', password: 'otra-clave-muy-larga', passwordConfirm: 'otra-clave-muy-larga' });
+      .send({ username: 'otro', password: 'otra-clave-muy-larga', passwordConfirm: 'otra-clave-muy-larga' });
     assert.equal(second.status, 410);
     assert.equal((await request(app).get('/api/auth/status')).body.setupAvailable, false);
+  });
+
+  it('manages panel accounts: create, list, reset, own password and delete', async () => {
+    const tiago = await loginAgent();
+    const pass = 'clave-de-la-manicurista';
+
+    assert.equal((await request(app).get('/api/admin/accounts')).status, 401);
+
+    const created = await tiago.post('/api/admin/accounts').set(CSRF).send({ username: 'Maria', password: pass, passwordConfirm: pass });
+    assert.equal(created.status, 201, JSON.stringify(created.body));
+    assert.equal(created.body.account.username, 'maria');
+    assert.equal(created.body.account.role, 'superadmin');
+    assert.equal(created.body.account.passwordHash, undefined);
+
+    const dup = await tiago.post('/api/admin/accounts').set(CSRF).send({ username: 'maria', password: pass, passwordConfirm: pass });
+    assert.equal(dup.status, 409);
+    assert.equal(dup.body.details[0].path, 'username');
+
+    const list = await tiago.get('/api/admin/accounts');
+    assert.equal(list.status, 200);
+    assert.deepEqual(list.body.items.map((a) => [a.username, a.isSelf]), [['tiago', true], ['maria', false]]);
+
+    // The manicurist is a full superadmin: she can open every admin route, Cuentas included.
+    const maria = request.agent(app);
+    assert.equal((await maria.post('/api/auth/login').set(CSRF).send({ username: 'maria', password: pass })).status, 200);
+    assert.equal((await maria.get('/api/admin/accounts')).status, 200);
+    assert.equal((await maria.get('/api/admin/settings')).status, 200);
+
+    // Resetting someone else's password needs no current password and ends their session.
+    const mariaId = created.body.account.id;
+    const reset = await tiago.patch(`/api/admin/accounts/${mariaId}/password`).set(CSRF).send({ password: 'nueva-clave-maria', passwordConfirm: 'nueva-clave-maria' });
+    assert.equal(reset.status, 200);
+    assert.equal((await maria.get('/api/auth/session')).status, 401);
+
+    // Your own password needs the current one, and you stay signed in afterwards.
+    const tiagoId = list.body.items[0].id;
+    const wrong = await tiago.patch(`/api/admin/accounts/${tiagoId}/password`).set(CSRF).send({ currentPassword: 'mala', password: 'otra-clave-tiago', passwordConfirm: 'otra-clave-tiago' });
+    assert.equal(wrong.status, 422);
+    assert.equal(wrong.body.details[0].path, 'currentPassword');
+    const own = await tiago
+      .patch(`/api/admin/accounts/${tiagoId}/password`)
+      .set(CSRF)
+      .send({ currentPassword: 'una-clave-muy-larga', password: 'otra-clave-tiago', passwordConfirm: 'otra-clave-tiago' });
+    assert.equal(own.status, 200);
+    assert.equal((await tiago.get('/api/auth/session')).status, 200);
+    assert.equal((await request(app).post('/api/auth/login').set(CSRF).send({ username: 'tiago', password: 'una-clave-muy-larga' })).status, 401);
+
+    assert.equal((await tiago.delete(`/api/admin/accounts/${tiagoId}`).set(CSRF)).status, 409);
+    assert.equal((await tiago.delete(`/api/admin/accounts/${mariaId}`).set(CSRF)).status, 200);
+    assert.equal((await tiago.delete(`/api/admin/accounts/${mariaId}`).set(CSRF)).status, 404);
+    assert.equal((await tiago.get('/api/admin/accounts')).body.items.length, 1);
+
+    // Put the original password back for the tests that follow.
+    await tiago
+      .patch(`/api/admin/accounts/${tiagoId}/password`)
+      .set(CSRF)
+      .send({ currentPassword: 'otra-clave-tiago', password: 'una-clave-muy-larga', passwordConfirm: 'una-clave-muy-larga' });
   });
 
   it('rejects wrong passwords with a generic message', async () => {

@@ -1,7 +1,6 @@
 import { MongoMemoryServer } from 'mongodb-memory-server-core';
 import mongoose from 'mongoose';
 
-export const SETUP_KEY = 'clave-de-instalacion-de-prueba';
 export const CSRF = { 'X-Requested-With': 'nails-art' };
 // Monday 2026-11-16, 10:00 in America/Caracas (UTC-4).
 export const NOW_ISO = '2026-11-16T14:00:00.000Z';
@@ -15,7 +14,6 @@ export async function startTestApp() {
   memory = await MongoMemoryServer.create();
   process.env.NODE_ENV = 'test';
   process.env.MONGODB_URI = memory.getUri('nails-art-test');
-  process.env.ADMIN_SETUP_KEY = SETUP_KEY;
   process.env.APP_URL = 'https://nails-art.test';
   delete process.env.ADMIN_SESSION_SECRET;
 

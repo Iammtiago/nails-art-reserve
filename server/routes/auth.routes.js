@@ -24,7 +24,7 @@ authRouter.get('/session', async (req, res) => {
 
 // POST /api/auth/setup — creates the superadmin once. Locks itself after the first account.
 authRouter.post('/setup', validate(setupSchema), async (req, res) => {
-  const admin = await createSuperadmin(req.valid.body, { ip: req.ip });
+  const admin = await createSuperadmin(req.valid.body);
   await issueSession(res, admin);
   res.status(201).json({ admin: { id: String(admin._id), username: admin.username, role: admin.role } });
 });

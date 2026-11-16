@@ -48,6 +48,9 @@
   html {
     -webkit-text-size-adjust: 100%;
     text-rendering: optimizeLegibility;
+    /* In-page links (#reservar) glide and stop below the sticky header. */
+    scroll-behavior: smooth;
+    scroll-padding-top: 5.5rem;
   }
 
   body {

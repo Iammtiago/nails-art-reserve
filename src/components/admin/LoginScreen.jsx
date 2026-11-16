@@ -1,7 +1,6 @@
 'use client';
 
-import { KeyRound, LogIn, ShieldCheck } from 'lucide-react';
-import Link from 'next/link';
+import { KeyRound, LogIn } from 'lucide-react';
 import { useState } from 'react';
 import { ApiError, apiPost } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
@@ -9,7 +8,7 @@ import { Field, Input } from '@/components/ui/Field';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { ErrorState } from '@/components/ui/States';
 
-export function LoginScreen({ status, statusError, onRetry, onSuccess }) {
+export function LoginScreen({ statusError, onRetry, onSuccess }) {
   const [form, setForm] = useState({ username: '', password: '' });
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState('');
@@ -60,19 +59,6 @@ export function LoginScreen({ status, statusError, onRetry, onSuccess }) {
               <h1 className="mt-1 font-display text-2xl font-semibold sm:text-3xl">Hola de nuevo</h1>
               <p className="mt-1 text-sm text-ink-2">Entra para gestionar citas, clientas y horarios.</p>
             </div>
-
-            {status?.setupAvailable ? (
-              <div className="mb-5 flex items-start gap-3 rounded-2xl bg-accent-soft p-4 text-sm text-ink">
-                <ShieldCheck aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-accent-ink" />
-                <div>
-                  <p className="font-semibold">Aún no hay ninguna cuenta.</p>
-                  <p className="mt-0.5 text-ink-2">Crea la cuenta principal (superadmin) para empezar.</p>
-                  <Link href="/admin/setup" className="mt-2 inline-flex min-h-[44px] items-center font-semibold text-primary-ink underline underline-offset-4">
-                    Crear cuenta principal
-                  </Link>
-                </div>
-              </div>
-            ) : null}
 
             <form onSubmit={submit} noValidate className="space-y-4">
               <Field label="Usuario" error={errors.username}>

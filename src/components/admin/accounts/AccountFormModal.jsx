@@ -50,7 +50,7 @@ function AccountForm({ onCreated, onCancel }) {
       <Field label="Usuario" hint="Con este nombre entrará al panel. Sin espacios ni acentos." error={errors.username}>
         {(p) => <Input {...p} value={form.username} onChange={update('username')} autoComplete="off" autoCapitalize="none" spellCheck={false} placeholder="ej. maria" />}
       </Field>
-      <Field label="Contraseña" hint="Mínimo 10 caracteres. Dísela en persona, no por chat." error={errors.password}>
+      <Field label="Contraseña" hint="Mínimo 6 caracteres. Dísela en persona, no por chat." error={errors.password}>
         {(p) => <PasswordInput {...p} value={form.password} onChange={update('password')} autoComplete="new-password" />}
       </Field>
       <Field label="Repite la contraseña" error={errors.passwordConfirm}>

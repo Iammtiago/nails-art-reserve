@@ -20,6 +20,7 @@
     "test": "node --test --test-concurrency=1 \"server/test/**/*.test.js\" \"shared/test/**/*.test.js\"",
     "test:shared": "node --test \"shared/test/**/*.test.js\"",
     "db:indexes": "node --env-file-if-exists=.env.local --env-file-if-exists=.env scripts/sync-indexes.js",
+    "admin:create": "node --env-file-if-exists=.env.local --env-file-if-exists=.env scripts/create-admin.js",
     "seed:demo": "node --env-file-if-exists=.env.local --env-file-if-exists=.env scripts/seed-demo.js"
   },
   "dependencies": {

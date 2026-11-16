@@ -143,7 +143,7 @@ export function AccountsManager() {
           </div>
           <div className="min-w-0 flex-1">
             <p className="font-display text-lg font-semibold">¡Tu cuenta está lista!</p>
-            <p className="text-sm text-ink-2">Ahora crea la cuenta de la manicurista. Luego avísale a Dev para retirar la página de alta.</p>
+            <p className="text-sm text-ink-2">Ahora crea la cuenta de la manicurista.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <Button icon={UserPlus} onClick={() => setCreating(true)}>

@@ -34,7 +34,7 @@ nails-art-reserve/
 │  ├─ middleware/          CSRF, conexión, sesión, validación, errores
 │  └─ test/                Pruebas de integración (MongoDB en memoria)
 ├─ src/
-│  ├─ app/                 Páginas (/, /admin/*, /admin/setup), layout, estilos globales, iconos
+│  ├─ app/                 Páginas (/, /admin/*), layout, estilos globales, iconos
 │  ├─ pages/api/[...path].js  Monta Express en /api/* (función de Vercel)
 │  ├─ components/ui/       Kit: botón, campo, modal, avisos, confirmación, estados, insignias…
 │  ├─ components/booking/  Portal público: pasos, calendario, horas, ticket, cancelar
@@ -60,7 +60,7 @@ npm install
 cp .env.example .env.local
 ```
 
-Rellena `.env.local`. Para probar en local puedes dejar `MONGODB_URI` vacío: se usa una base MongoDB en memoria guardada en `.data/` (la primera vez descarga el binario de MongoDB 7.0, unos 600 MB). Crea tu usuario local en `http://localhost:3000/admin/setup`.
+Rellena `.env.local`. Para probar en local puedes dejar `MONGODB_URI` vacío: se usa una base MongoDB en memoria guardada en `.data/` (la primera vez descarga el binario de MongoDB 7.0, unos 600 MB). Crea tu usuario local con `ADMIN_USERNAME=tu-usuario ADMIN_PASSWORD=tu-clave npm run admin:create` (también sirve para recuperar el acceso si todas las cuentas olvidan su contraseña, apuntando `MONGODB_URI` a la base real).
 
 ¿Otro servidor de desarrollo ya usa esta carpeta? Arranca un segundo con su propia compilación y su propia base: `NEXT_DIST_DIR=.next-alt LOCAL_DB_DIR=.data/mongo-alt npx next dev --port 3100`.
 
@@ -100,10 +100,7 @@ npm run dev
 
 ## Cuentas del panel (sin credenciales en el chat ni en el código)
 
-1. Nada más desplegar, entra a `https://nails-art-sc.vercel.app/admin/setup` y crea tu usuario y contraseña (10+ caracteres). La página está **abierta sin clave** hasta que exista la primera cuenta (decisión de Tiago): hazlo enseguida.
-2. Al crearla entras directo a **Cuentas**: crea ahí la cuenta de la manicurista. Las dos tienen acceso completo.
-3. La página de alta se cierra sola en cuanto existe una cuenta («ya fue creado»).
-4. Avísale a Dev: retirará la página `/admin/setup` y la ruta `POST /api/auth/setup` del código y desplegará el cambio. Las cuentas se quedan.
+La cuenta principal ya existe (Tiago la creó el 2026-11-16 con el alta web, que luego se retiró del código). Las demás se crean en **Panel → Cuentas** (contraseña de 6+ caracteres). Todas tienen acceso completo.
 
 Si alguien olvida su contraseña, desde la otra cuenta: **Cuentas → Nueva contraseña**. Nadie puede borrar su propia cuenta, así el panel nunca se queda sin acceso.
 

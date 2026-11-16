@@ -63,10 +63,9 @@ Cuerpo `{ phone }`; debe coincidir con el de la cita. `200 { appointment }`. Err
 ## Acceso al panel
 
 ### `GET /api/auth/status`
-`{ authenticated, admin: { id, username, role } | null, hasAdmin, setupAvailable }`
+`{ authenticated, admin: { id, username, role } | null }`
 
-### `POST /api/auth/setup` (una sola vez, temporal)
-`{ username, password, passwordConfirm }` → `201 { admin }` + cookie. Abierta sin clave mientras no exista ninguna cuenta (decisión de Tiago, 2026-11-16); con una cuenta ya creada responde `410 SETUP_DONE`. Se retira del código cuando Tiago confirme que creó las cuentas.
+El alta web (`POST /api/auth/setup`) se retiró el 2026-11-16. Cuentas nuevas: `POST /api/admin/accounts` o `npm run admin:create`. Contraseñas: mínimo 6 caracteres.
 
 ### `POST /api/auth/login`
 `{ username, password }` → `{ admin }` + cookie. `401 BAD_CREDENTIALS` (mismo mensaje exista o no el usuario), `429` tras 5 fallos en 15 min por IP.

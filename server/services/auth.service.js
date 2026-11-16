@@ -8,7 +8,7 @@ import jwt from 'jsonwebtoken';
 import { ADMIN_COOKIE } from '../../shared/constants.js';
 import { SESSION_SECRET_MIN_LENGTH, env } from '../config/env.js';
 import { AppError, isDuplicateKey, unauthorized, unavailable } from '../lib/errors.js';
-import { burnPasswordCheck, hashPassword, verifyPassword } from '../lib/password.js';
+import { burnPasswordCheck, verifyPassword } from '../lib/password.js';
 import { AdminUser, AppSecret } from '../models/index.js';
 import { hit, peek, tooMany } from './rate-limit.service.js';
 
@@ -96,37 +96,12 @@ export async function requireAdminSession(req) {
   return admin;
 }
 
-// ---------- setup (one time) ----------
-// Decision of Tiago (2026-11-16): the setup is open, without an install key, until the first
-// account exists. He creates it right after the deploy and then asks to remove the setup code.
+// The one-time web setup was removed on 2026-11-16 once Tiago created his account.
+// New accounts are created from Cuentas; locally, with `npm run admin:create`.
 
 export async function authStatus(req) {
-  const hasAdmin = Boolean(await AdminUser.exists({}));
   const admin = await adminFromRequest(req);
-  return {
-    authenticated: Boolean(admin),
-    admin,
-    hasAdmin,
-    setupAvailable: !hasAdmin,
-  };
-}
-
-export async function createSuperadmin({ username, password }) {
-  if (await AdminUser.exists({})) {
-    throw new AppError(410, 'El superadmin ya fue creado. Entra desde /admin.', { code: 'SETUP_DONE' });
-  }
-
-  const passwordHash = await hashPassword(password);
-  try {
-    // The setup signs you in, so it counts as your first access.
-    const admin = await AdminUser.create({ username, passwordHash, role: 'superadmin', setupSlot: 'initial', lastLoginAt: new Date() });
-    return admin.toObject();
-  } catch (error) {
-    if (isDuplicateKey(error)) {
-      throw new AppError(410, 'El superadmin ya fue creado. Entra desde /admin.', { code: 'SETUP_DONE' });
-    }
-    throw error;
-  }
+  return { authenticated: Boolean(admin), admin };
 }
 
 // ---------- login ----------

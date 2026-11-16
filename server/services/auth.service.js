@@ -1,21 +1,20 @@
-// Superadmin accounts and panel sessions.
-// The first (and only) superadmin is created through a one-time setup that locks itself
-// as soon as an account exists. Credentials never live in code, env files or chat.
+// Panel accounts and sessions.
+// The first superadmin is created through a one-time setup that locks itself as soon as an
+// account exists; more accounts are created from the panel (Cuentas). Credentials never live
+// in code, env files or chat.
 
 import { createHash, randomBytes } from 'node:crypto';
 import jwt from 'jsonwebtoken';
 import { ADMIN_COOKIE } from '../../shared/constants.js';
-import { SESSION_SECRET_MIN_LENGTH, SETUP_KEY_MIN_LENGTH, env } from '../config/env.js';
+import { SESSION_SECRET_MIN_LENGTH, env } from '../config/env.js';
 import { AppError, isDuplicateKey, unauthorized, unavailable } from '../lib/errors.js';
-import { burnPasswordCheck, hashPassword, safeEqual, verifyPassword } from '../lib/password.js';
+import { burnPasswordCheck, hashPassword, verifyPassword } from '../lib/password.js';
 import { AdminUser, AppSecret } from '../models/index.js';
 import { hit, peek, tooMany } from './rate-limit.service.js';
 
 const SESSION_HOURS = 12;
 const LOGIN_WINDOW_MS = 15 * 60 * 1000;
 const LOGIN_MAX_FAILURES = 5;
-const SETUP_WINDOW_MS = 15 * 60 * 1000;
-const SETUP_MAX_ATTEMPTS = 5;
 
 // ---------- session secret ----------
 
@@ -98,10 +97,8 @@ export async function requireAdminSession(req) {
 }
 
 // ---------- setup (one time) ----------
-
-function setupKeyConfigured() {
-  return env().setupKey.length >= SETUP_KEY_MIN_LENGTH;
-}
+// Decision of Tiago (2026-11-16): the setup is open, without an install key, until the first
+// account exists. He creates it right after the deploy and then asks to remove the setup code.
 
 export async function authStatus(req) {
   const hasAdmin = Boolean(await AdminUser.exists({}));
@@ -110,34 +107,19 @@ export async function authStatus(req) {
     authenticated: Boolean(admin),
     admin,
     hasAdmin,
-    setupAvailable: !hasAdmin && setupKeyConfigured(),
-    setupKeyConfigured: setupKeyConfigured(),
+    setupAvailable: !hasAdmin,
   };
 }
 
-export async function createSuperadmin({ setupKey, username, password }, { ip }) {
+export async function createSuperadmin({ username, password }) {
   if (await AdminUser.exists({})) {
     throw new AppError(410, 'El superadmin ya fue creado. Entra desde /admin.', { code: 'SETUP_DONE' });
-  }
-  if (!setupKeyConfigured()) {
-    throw unavailable(
-      `Configura la variable ADMIN_SETUP_KEY (mínimo ${SETUP_KEY_MIN_LENGTH} caracteres) en Vercel y vuelve a desplegar.`,
-      'SETUP_KEY_MISSING',
-    );
-  }
-  const limitKey = `setup:${ip}`;
-  if (env().rateLimitsEnabled) {
-    const { count, resetAt } = await peek(limitKey, SETUP_WINDOW_MS);
-    if (count >= SETUP_MAX_ATTEMPTS) throw tooMany('Demasiados intentos.', resetAt);
-  }
-  if (!safeEqual(setupKey, env().setupKey)) {
-    if (env().rateLimitsEnabled) await hit(limitKey, SETUP_WINDOW_MS);
-    throw new AppError(403, 'La clave de instalación no es correcta.', { code: 'SETUP_KEY_INVALID' });
   }
 
   const passwordHash = await hashPassword(password);
   try {
-    const admin = await AdminUser.create({ username, passwordHash, role: 'superadmin', setupSlot: 'initial' });
+    // The setup signs you in, so it counts as your first access.
+    const admin = await AdminUser.create({ username, passwordHash, role: 'superadmin', setupSlot: 'initial', lastLoginAt: new Date() });
     return admin.toObject();
   } catch (error) {
     if (isDuplicateKey(error)) {

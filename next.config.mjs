@@ -1,5 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  // Local only: a second dev server in the same folder needs its own build dir (see .claude/launch.json).
+  distDir: process.env.NEXT_DIST_DIR || '.next',
   reactStrictMode: true,
   poweredByHeader: false,
   // Server-only packages loaded by the Express API mounted in src/pages/api.

@@ -1,18 +1,23 @@
 'use client';
 
-// One-time superadmin creation. Remove this file, src/app/admin/setup and the
-// /api/auth/setup route once the account exists (see README, "Superadmin").
+// One-time superadmin creation, open (no install key) until the first account exists —
+// Tiago's decision of 2026-11-16. Remove this file, src/app/admin/setup and the
+// /api/auth/setup route once he confirms the accounts exist (see README, "Superadmin").
 
-import { CheckCircle2, Eye, EyeOff, ShieldCheck, ShieldOff } from 'lucide-react';
+import { CheckCircle2, ShieldCheck, Sparkles, UserPlus } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useState } from 'react';
+import { fieldErrorsFor, setupSchema } from '@shared/schemas.js';
 import { ApiError, apiGet, apiPost } from '@/lib/api';
 import { useAsync } from '@/lib/hooks';
 import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Field';
+import { PasswordInput } from '@/components/ui/PasswordInput';
 import { ErrorState, LoadingState } from '@/components/ui/States';
 
-const EMPTY = { setupKey: '', username: '', password: '', passwordConfirm: '' };
+const EMPTY = { username: '', password: '', passwordConfirm: '' };
+
+const validateLocally = (form) => fieldErrorsFor(setupSchema, form);
 
 export function SetupScreen() {
   const router = useRouter();
@@ -20,7 +25,6 @@ export function SetupScreen() {
   const [form, setForm] = useState(EMPTY);
   const [errors, setErrors] = useState({});
   const [formError, setFormError] = useState('');
-  const [show, setShow] = useState(false);
   const [loading, setLoading] = useState(false);
 
   const update = (key) => (event) => {
@@ -29,18 +33,9 @@ export function SetupScreen() {
     setFormError('');
   };
 
-  function validateLocally() {
-    const e = {};
-    if (!form.setupKey) e.setupKey = 'Escribe la clave de instalación.';
-    if (!/^[a-zA-Z0-9._-]{3,40}$/.test(form.username.trim())) e.username = 'Usa 3 a 40 letras sin acentos, números, punto o guion.';
-    if (form.password.length < 10) e.password = 'La contraseña necesita al menos 10 caracteres.';
-    if (form.password !== form.passwordConfirm) e.passwordConfirm = 'Las contraseñas no coinciden.';
-    return e;
-  }
-
   async function submit(event) {
     event.preventDefault();
-    const local = validateLocally();
+    const local = validateLocally(form);
     if (Object.keys(local).length) {
       setErrors(local);
       return;
@@ -48,7 +43,7 @@ export function SetupScreen() {
     setLoading(true);
     try {
       await apiPost('/api/auth/setup', { ...form, username: form.username.trim() });
-      router.replace('/admin/citas');
+      router.replace('/admin/cuentas?bienvenida=1');
     } catch (error) {
       if (error instanceof ApiError) {
         setErrors(error.fieldErrors());
@@ -69,67 +64,59 @@ export function SetupScreen() {
     body = (
       <div className="flex flex-col items-center py-4 text-center">
         <CheckCircle2 aria-hidden="true" className="mb-3 h-12 w-12 text-success" />
-        <h1 className="font-display text-2xl font-semibold">El superadmin ya existe</h1>
-        <p className="mt-2 text-sm text-ink-2">La instalación está cerrada. Entra al panel con tu usuario y contraseña.</p>
+        <h1 className="font-display text-2xl font-semibold">La cuenta principal ya existe</h1>
+        <p className="mt-2 text-sm text-ink-2">Esta página ya no crea cuentas. Entra al panel con tu usuario; desde «Cuentas» puedes crear la de la manicurista.</p>
         <Button href="/admin" className="mt-6" size="lg">
           Ir al panel
         </Button>
-      </div>
-    );
-  } else if (!status.data?.setupKeyConfigured) {
-    body = (
-      <div className="py-2">
-        <ShieldOff aria-hidden="true" className="mb-3 h-10 w-10 text-warning" />
-        <h1 className="font-display text-2xl font-semibold">Falta la clave de instalación</h1>
-        <p className="mt-2 text-sm text-ink-2">
-          Para crear el superadmin, agrega en Vercel la variable <code className="rounded bg-primary-soft px-1.5 py-0.5 font-mono text-[0.8rem]">ADMIN_SETUP_KEY</code>{' '}
-          con una clave que solo tú conozcas (mínimo 12 caracteres) y vuelve a desplegar.
-        </p>
       </div>
     );
   } else {
     body = (
       <>
         <div className="mb-6 text-center">
-          <ShieldCheck aria-hidden="true" className="mx-auto mb-3 h-11 w-11 text-accent-ink" />
+          <div className="mx-auto mb-4 grid h-14 w-14 place-items-center rounded-2xl bg-secondary-soft text-primary-ink shadow-glass">
+            <ShieldCheck aria-hidden="true" className="h-7 w-7" />
+          </div>
           <p className="eyebrow">Instalación · solo una vez</p>
-          <h1 className="mt-1 font-display text-2xl font-semibold sm:text-3xl">Crear superadmin</h1>
-          <p className="mt-1 text-sm text-ink-2">Esta cuenta administra todo el panel. Al crearla, esta página se cierra.</p>
+          <h1 className="mt-1 font-display text-2xl font-semibold sm:text-3xl">Crea tu cuenta de superadmin</h1>
+          <p className="mt-2 text-sm text-ink-2">Será la cuenta principal del panel. En cuanto la crees, esta página se cierra para todos.</p>
         </div>
+
+        <ol className="mb-6 grid gap-2 text-sm text-ink-2" aria-label="Pasos">
+          <li className="flex items-center gap-2.5 rounded-xl bg-primary-soft/70 px-3 py-2">
+            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-primary text-xs font-bold text-primary-on">1</span>
+            Crea aquí tu usuario y contraseña.
+          </li>
+          <li className="flex items-center gap-2.5 rounded-xl bg-primary-soft/40 px-3 py-2">
+            <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-surface text-xs font-bold text-primary-ink ring-1 ring-line">2</span>
+            En «Cuentas», crea la de la manicurista.
+          </li>
+        </ol>
+
         <form onSubmit={submit} noValidate className="space-y-4">
-          <Field label="Clave de instalación" hint="La que pusiste en ADMIN_SETUP_KEY en Vercel." error={errors.setupKey}>
-            {(p) => <Input {...p} type="password" value={form.setupKey} onChange={update('setupKey')} autoComplete="off" />}
+          <Field label="Usuario" hint="Con este nombre entrarás al panel. Sin espacios ni acentos." error={errors.username}>
+            {(p) => <Input {...p} value={form.username} onChange={update('username')} autoComplete="username" autoCapitalize="none" spellCheck={false} placeholder="ej. tiago" />}
           </Field>
-          <Field label="Usuario" hint="Con este nombre entrarás al panel." error={errors.username}>
-            {(p) => <Input {...p} value={form.username} onChange={update('username')} autoComplete="username" autoCapitalize="none" spellCheck={false} />}
-          </Field>
-          <Field label="Contraseña" hint="Mínimo 10 caracteres." error={errors.password}>
-            {(p) => (
-              <div className="relative">
-                <Input {...p} type={show ? 'text' : 'password'} value={form.password} onChange={update('password')} autoComplete="new-password" className="pr-12" />
-                <button
-                  type="button"
-                  onClick={() => setShow((v) => !v)}
-                  className="absolute inset-y-0 right-0 grid w-12 place-items-center text-ink-3 hover:text-ink"
-                  aria-label={show ? 'Ocultar contraseña' : 'Mostrar contraseña'}
-                >
-                  {show ? <EyeOff aria-hidden="true" className="h-5 w-5" /> : <Eye aria-hidden="true" className="h-5 w-5" />}
-                </button>
-              </div>
-            )}
+          <Field label="Contraseña" hint="Mínimo 10 caracteres. Mejor una frase que recuerdes." error={errors.password}>
+            {(p) => <PasswordInput {...p} value={form.password} onChange={update('password')} autoComplete="new-password" />}
           </Field>
           <Field label="Repite la contraseña" error={errors.passwordConfirm}>
-            {(p) => <Input {...p} type={show ? 'text' : 'password'} value={form.passwordConfirm} onChange={update('passwordConfirm')} autoComplete="new-password" />}
+            {(p) => <PasswordInput {...p} value={form.passwordConfirm} onChange={update('passwordConfirm')} autoComplete="new-password" />}
           </Field>
           {formError ? (
             <p className="rounded-xl bg-danger-soft px-3 py-2.5 text-sm font-medium text-danger" role="alert">
               {formError}
             </p>
           ) : null}
-          <Button type="submit" size="lg" block loading={loading} icon={ShieldCheck}>
-            Crear superadmin y entrar
+          <Button type="submit" size="lg" block loading={loading} icon={UserPlus}>
+            Crear mi cuenta y entrar
           </Button>
         </form>
+        <p className="mt-4 flex items-start justify-center gap-1.5 text-center text-xs text-ink-3">
+          <Sparkles aria-hidden="true" className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+          Nadie más verá tu contraseña: se guarda cifrada.
+        </p>
       </>
     );
   }

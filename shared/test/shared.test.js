@@ -6,7 +6,7 @@ import { addDays, dayOfWeek, diffDays, nowInTimezone, startOfWeek } from '../tim
 import { candidateStarts, checkSlot, computeAvailability, daySegments, ticksFor } from '../schedule.js';
 import { formatPhone, normalizePhone } from '../phone.js';
 import { buildThemeTokens, contrastRatio, paletteReport } from '../color.js';
-import { createAppointmentSchema, settingsUpdateSchema, setupSchema, verifySchema } from '../schemas.js';
+import { changePasswordSchema, createAppointmentSchema, settingsUpdateSchema, setupSchema, verifySchema } from '../schemas.js';
 import { formatDateLong, formatTime } from '../format.js';
 import { bookingConfirmationText, whatsappLink } from '../whatsapp.js';
 
@@ -176,9 +176,18 @@ describe('schemas', () => {
   });
 
   it('requires matching passwords on setup', () => {
-    const r = setupSchema.safeParse({ setupKey: 'k', username: 'Tiago', password: 'clave-larga-123', passwordConfirm: 'otra' });
+    const r = setupSchema.safeParse({ username: 'Tiago', password: 'clave-larga-123', passwordConfirm: 'otra' });
     assert.equal(r.success, false);
     assert.equal(r.error.issues[0].path.join('.'), 'passwordConfirm');
+    // The install key was removed (2026-11-16): sending it is now an unknown key.
+    assert.equal(setupSchema.safeParse({ setupKey: 'k', username: 'tiago', password: 'clave-larga-123', passwordConfirm: 'clave-larga-123' }).success, false);
+  });
+
+  it('asks for matching passwords when changing one', () => {
+    const ok = changePasswordSchema.safeParse({ password: 'clave-larga-123', passwordConfirm: 'clave-larga-123' });
+    assert.equal(ok.success, true);
+    assert.equal(ok.data.currentPassword, '');
+    assert.equal(changePasswordSchema.safeParse({ password: 'corta', passwordConfirm: 'corta' }).success, false);
   });
 });
 

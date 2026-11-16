@@ -2,8 +2,8 @@
 
 Aplicación de reservas para el salón de uñas **Nails Art** (`@nailsart.sc`, San Cristóbal).
 
-- **Portal público `/`:** la clienta elige servicio → día → hora → escribe nombre y teléfono, y recibe un ticket con **código QR** y **clave de 6 caracteres** que puede guardar en la galería y confirmar por WhatsApp. También puede **cancelar** sus citas con su teléfono.
-- **Panel `/admin`:** Citas, Calendario, Escanear código (cámara o clave), Clientes y Configuración (datos, logo, horarios, servicios, reglas y colores).
+- **Portal público `/`:** cabecera fija con **Agendar**, **Cancelar** y **Llamar**; hero con estado en vivo (abierto o cerrado), frase de impacto y, en escritorio, atajo para elegir servicio. La clienta elige servicio → día → hora → escribe nombre y teléfono, y recibe un ticket con **código QR** y **clave de 6 caracteres** que puede guardar en la galería y confirmar por WhatsApp. Debajo: cómo funciona, reglas (salen de Configuración), horario, contacto y preguntas frecuentes. También puede **cancelar** sus citas con su teléfono.
+- **Panel `/admin`:** Citas, Calendario, Escanear código (cámara o clave), Clientes, Configuración (datos, logo, horarios, servicios, reglas y colores) y **Cuentas** (quién entra al panel; todas con acceso completo).
 
 Stack: Next.js 16 (App Router) · React 19 · JavaScript · Tailwind CSS 3.4 · Express 5 (API REST modular) · MongoDB + Mongoose 9 · zod 4.
 Un solo proyecto en Vercel: la API Express se monta dentro de Next en `src/pages/api/[...path].js` (en un proyecto Next, Vercel no usa la carpeta raíz `api/`). La misma API corre sola en local con `npm run api`.
@@ -60,7 +60,9 @@ npm install
 cp .env.example .env.local
 ```
 
-Rellena `.env.local`. Para probar en local puedes dejar `MONGODB_URI` vacío: se usa una base MongoDB en memoria guardada en `.data/` (la primera vez descarga el binario de MongoDB 7.0, unos 600 MB). Pon una `ADMIN_SETUP_KEY` cualquiera de 12+ caracteres para crear tu usuario local en `http://localhost:3000/admin/setup`.
+Rellena `.env.local`. Para probar en local puedes dejar `MONGODB_URI` vacío: se usa una base MongoDB en memoria guardada en `.data/` (la primera vez descarga el binario de MongoDB 7.0, unos 600 MB). Crea tu usuario local en `http://localhost:3000/admin/setup`.
+
+¿Otro servidor de desarrollo ya usa esta carpeta? Arranca un segundo con su propia compilación y su propia base: `NEXT_DIST_DIR=.next-alt LOCAL_DB_DIR=.data/mongo-alt npx next dev --port 3100`.
 
 ```bash
 npm run dev
@@ -83,7 +85,6 @@ npm run dev
 | Variable | Obligatoria | Para qué |
 |---|---|---|
 | `MONGODB_URI` | Sí en producción | Conexión a MongoDB Atlas (la crea la integración del Marketplace de Vercel) |
-| `ADMIN_SETUP_KEY` | Para crear el superadmin | Clave que **tú** eliges (12+ caracteres) y escribes en `/admin/setup`. Puedes borrarla después |
 | `APP_URL` | Recomendada | URL pública (`https://nails-art-sc.vercel.app`); va dentro del QR |
 | `ADMIN_SESSION_SECRET` | Opcional | Secreto de 32+ caracteres para firmar la sesión. Si falta, el servidor genera uno al azar y lo guarda en la base |
 | `CORS_ORIGINS`, `API_PORT` | Solo `npm run api` | Orígenes permitidos y puerto de la API suelta |
@@ -97,12 +98,14 @@ npm run dev
 - «Hoy» lo decide el servidor en `America/Caracas`, nunca el navegador.
 - Código de reserva: 6 caracteres sin `0 O 1 I L`, generado con `crypto`. El QR abre `/admin/escanear?codigo=XXXXXX`.
 
-## Superadmin (sin credenciales en el chat ni en el código)
+## Cuentas del panel (sin credenciales en el chat ni en el código)
 
-1. En Vercel añade la variable `ADMIN_SETUP_KEY` con una clave que solo tú conozcas (12+ caracteres) y vuelve a desplegar.
-2. Entra a `https://nails-art-sc.vercel.app/admin/setup`, escribe esa clave, tu usuario y tu contraseña (10+ caracteres).
-3. La página se cierra sola al crear la cuenta (devuelve «ya fue creado»); desde ahí entras por `/admin`.
-4. Avísale a Dev: retirará la página y la ruta de alta del código en un PR aparte. Después puedes borrar `ADMIN_SETUP_KEY` de Vercel.
+1. Nada más desplegar, entra a `https://nails-art-sc.vercel.app/admin/setup` y crea tu usuario y contraseña (10+ caracteres). La página está **abierta sin clave** hasta que exista la primera cuenta (decisión de Tiago): hazlo enseguida.
+2. Al crearla entras directo a **Cuentas**: crea ahí la cuenta de la manicurista. Las dos tienen acceso completo.
+3. La página de alta se cierra sola en cuanto existe una cuenta («ya fue creado»).
+4. Avísale a Dev: retirará la página `/admin/setup` y la ruta `POST /api/auth/setup` del código y desplegará el cambio. Las cuentas se quedan.
+
+Si alguien olvida su contraseña, desde la otra cuenta: **Cuentas → Nueva contraseña**. Nadie puede borrar su propia cuenta, así el panel nunca se queda sin acceso.
 
 Protecciones: contraseña con scrypt, sesión en cookie `HttpOnly` de 12 h, 5 intentos fallidos cada 15 min por IP, cabecera anti-CSRF en toda escritura, CSP con nonce, `helmet` en la API y `noindex` en el panel.
 
@@ -172,12 +175,6 @@ vercel env ls
 
 ```bash
 vercel env add APP_URL production --value https://nails-art-sc.vercel.app
-```
-
-🔐 La clave de instalación la eliges tú (no la compartas en el chat):
-
-```bash
-vercel env add ADMIN_SETUP_KEY production
 ```
 
 Opcional, secreto de sesión fijo (si no, se genera solo y se guarda en la base):

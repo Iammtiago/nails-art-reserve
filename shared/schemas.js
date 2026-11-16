@@ -121,17 +121,30 @@ export const loginSchema = z.strictObject({
   password: z.string({ error: 'Escribe la contraseña.' }).min(1, 'Escribe la contraseña.').max(128),
 });
 
-export const setupSchema = z
+const passwordsMatch = [
+  (v) => v.password === v.passwordConfirm,
+  { message: 'Las contraseñas no coinciden.', path: ['passwordConfirm'] },
+];
+
+/** New panel account: used by the one-time setup and by Cuentas. */
+export const accountSchema = z
   .strictObject({
-    setupKey: z.string({ error: 'Escribe la clave de instalación.' }).min(1, 'Escribe la clave de instalación.').max(200),
     username: usernameField,
     password: passwordField,
     passwordConfirm: z.string().max(128),
   })
-  .refine((v) => v.password === v.passwordConfirm, {
-    message: 'Las contraseñas no coinciden.',
-    path: ['passwordConfirm'],
-  });
+  .refine(...passwordsMatch);
+
+export const setupSchema = accountSchema;
+
+/** currentPassword is required (and checked in the service) only when changing your own password. */
+export const changePasswordSchema = z
+  .strictObject({
+    currentPassword: z.string().max(128).optional().default(''),
+    password: passwordField,
+    passwordConfirm: z.string().max(128),
+  })
+  .refine(...passwordsMatch);
 
 // ---------- admin lists ----------
 
@@ -292,4 +305,13 @@ export const settingsUpdateSchema = z
 /** Flattens zod issues into the API error format: [{ path, message }]. */
 export function issuesToDetails(error) {
   return (error?.issues || []).map((i) => ({ path: i.path.join('.'), message: i.message }));
+}
+
+/** { field: firstMessage } from a schema, for inline form errors in the UI ({} when valid). */
+export function fieldErrorsFor(schema, value) {
+  const result = schema.safeParse(value);
+  if (result.success) return {};
+  const errors = {};
+  for (const d of issuesToDetails(result.error)) if (!errors[d.path]) errors[d.path] = d.message;
+  return errors;
 }

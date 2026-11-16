@@ -25,7 +25,7 @@ Express 5 montado en `/api` (dentro de Next en `src/pages/api/[...path].js`; sue
   "themeColors": { "primary": "#4B1C71", "secondary": "#D3B0F4", "accent": "#8E3FC7", "background": "#F8F2FE", "text": "#2A0F40" },
   "workingHours": [{ "dayOfWeek": 1, "isOpen": true, "openTime": "08:30", "closeTime": "19:00", "breakStart": "12:30", "breakEnd": "14:00", "slotDurationMinutes": 60 }],
   "services": [{ "key": "manicura", "name": "Manicura", "durationMinutes": 60 }],
-  "booking": { "windowDays": 30, "minLeadMinutes": 60 },
+  "booking": { "windowDays": 30, "minLeadMinutes": 60, "maxActivePerPhone": 3 },
   "blockedDates": [{ "date": "2026-12-24" }],
   "now": { "date": "2026-11-16", "minutes": 600, "time": "10:00" }
 } }
@@ -63,10 +63,10 @@ Cuerpo `{ phone }`; debe coincidir con el de la cita. `200 { appointment }`. Err
 ## Acceso al panel
 
 ### `GET /api/auth/status`
-`{ authenticated, admin: { id, username, role } | null, hasAdmin, setupAvailable, setupKeyConfigured }`
+`{ authenticated, admin: { id, username, role } | null, hasAdmin, setupAvailable }`
 
-### `POST /api/auth/setup` (una sola vez)
-`{ setupKey, username, password, passwordConfirm }` → `201 { admin }` + cookie. Exige `ADMIN_SETUP_KEY` (12+ caracteres) en el servidor. Errores: `403 SETUP_KEY_INVALID`, `410 SETUP_DONE`, `503 SETUP_KEY_MISSING`, `429` (5 intentos cada 15 min).
+### `POST /api/auth/setup` (una sola vez, temporal)
+`{ username, password, passwordConfirm }` → `201 { admin }` + cookie. Abierta sin clave mientras no exista ninguna cuenta (decisión de Tiago, 2026-11-16); con una cuenta ya creada responde `410 SETUP_DONE`. Se retira del código cuando Tiago confirme que creó las cuentas.
 
 ### `POST /api/auth/login`
 `{ username, password }` → `{ admin }` + cookie. `401 BAD_CREDENTIALS` (mismo mensaje exista o no el usuario), `429` tras 5 fallos en 15 min por IP.
@@ -79,7 +79,7 @@ Cuerpo `{ phone }`; debe coincidir con el de la cita. `200 { appointment }`. Err
 Actualización parcial con cualquiera de: `businessName`, `phone`, `instagramUrl`, `logoUrl` (ruta `/…`, URL `https://…` o `data:image/png|jpeg|webp;base64,…` hasta ~2 MB), `themeColors` (5 hex), `workingHours` (7 días), `services`, `booking` (`windowDays`, `minLeadMinutes`, `maxActivePerPhone`). Responde `{ settings }` completo.
 
 ### `GET /api/admin/settings`
-Configuración completa (incluye `booking.maxActivePerPhone`, servicios inactivos y motivos de días bloqueados).
+Configuración completa (incluye servicios inactivos y motivos de días bloqueados).
 
 ### `POST /api/appointments/verify`
 `{ code, markAttended? }` → `{ appointment, attended, warnings: string[], canMarkAttended, now }`. `404 CODE_NOT_FOUND`; con `markAttended` sobre una cita ya atendida o cancelada → `409`.
@@ -91,6 +91,14 @@ Configuración completa (incluye `booking.maxActivePerPhone`, servicios inactivo
 
 ### `PATCH /api/admin/appointments/:id/complete` · `PATCH /api/admin/appointments/:id/cancel`
 `{ appointment }`. `409` si la cita no está confirmada.
+
+### Cuentas del panel
+Todas las cuentas son `superadmin` (acceso completo). Máximo 5.
+
+- `GET /api/admin/accounts` → `{ items: [{ id, username, role, createdAt, lastLoginAt, isSelf }], max }`.
+- `POST /api/admin/accounts` `{ username, password, passwordConfirm }` → `201 { account }`. `409 USERNAME_TAKEN` (con `details` en `username`), `409 ACCOUNTS_FULL`.
+- `PATCH /api/admin/accounts/:id/password` `{ password, passwordConfirm, currentPassword? }` → `{ account }`. Para tu propia cuenta `currentPassword` es obligatoria (`422 CURRENT_PASSWORD_INVALID`) y la cookie se renueva; para otra cuenta no se pide y sus sesiones abiertas dejan de valer.
+- `DELETE /api/admin/accounts/:id` → `{ ok: true }`. `409 ACCOUNT_SELF` si intentas borrar la tuya; `404 ACCOUNT_NOT_FOUND`.
 
 ### `GET /api/admin/clients?q=&page=&limit=`
 Ítems: `{ id, name, phone, totalAppointments, completedAppointments, lastAppointmentDate, lastVisitDate, createdAt }`. `summary: { total, recurring }` (recurrentes = 2+ visitas).

@@ -44,6 +44,8 @@ export const LIMITS = Object.freeze({
   maxActivePerPhoneMax: 10,
   calendarRangeMaxDays: 62,
   pageSizeMax: 50,
+  // The salon uses two panel accounts (Tiago and the manicurist); a small cap keeps it tidy.
+  accountsMax: 5,
 });
 
 /** Brand palette extracted from the Nails Art logo (paleta A «Lila claro»). */

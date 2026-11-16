@@ -8,7 +8,6 @@ export function env() {
     isTest: nodeEnv === 'test',
     mongoUri: (process.env.MONGODB_URI || '').trim(),
     sessionSecret: process.env.ADMIN_SESSION_SECRET || '',
-    setupKey: process.env.ADMIN_SETUP_KEY || '',
     appUrl: (process.env.APP_URL || '').trim().replace(/\/+$/, ''),
     corsOrigins: (process.env.CORS_ORIGINS || '')
       .split(',')
@@ -19,5 +18,4 @@ export function env() {
   };
 }
 
-export const SETUP_KEY_MIN_LENGTH = 12;
 export const SESSION_SECRET_MIN_LENGTH = 32;

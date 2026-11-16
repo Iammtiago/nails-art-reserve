@@ -1,13 +1,17 @@
 import { Router } from 'express';
 import {
+  accountSchema,
   adminAppointmentsQuerySchema,
   adminClientsQuerySchema,
   blockDateSchema,
   calendarQuerySchema,
+  changePasswordSchema,
   dateParamSchema,
   idParamSchema,
 } from '../../shared/schemas.js';
 import { validate } from '../middleware/index.js';
+import { changePassword, createAccount, deleteAccount, listAccounts } from '../services/account.service.js';
+import { issueSession } from '../services/auth.service.js';
 import { cancelByAdmin, completeAppointment, listAppointments } from '../services/appointment.service.js';
 import { addBlockedDate, getCalendar, removeBlockedDate } from '../services/calendar.service.js';
 import { listClients } from '../services/client.service.js';
@@ -46,4 +50,25 @@ adminRouter.post('/blocked-dates', validate(blockDateSchema), async (req, res) =
 
 adminRouter.delete('/blocked-dates/:date', validate(dateParamSchema, 'params'), async (req, res) => {
   res.json(await removeBlockedDate(req.valid.params.date));
+});
+
+// ---------- accounts (Cuentas) ----------
+
+adminRouter.get('/accounts', async (req, res) => {
+  res.json(await listAccounts(req.admin));
+});
+
+adminRouter.post('/accounts', validate(accountSchema), async (req, res) => {
+  res.status(201).json({ account: await createAccount(req.valid.body, req.admin) });
+});
+
+adminRouter.patch('/accounts/:id/password', validate(idParamSchema, 'params'), validate(changePasswordSchema), async (req, res) => {
+  const { account, doc, isSelf } = await changePassword(req.valid.params.id, req.valid.body, req.admin);
+  // The session embeds a password fingerprint: renew it so you stay signed in after your own change.
+  if (isSelf) await issueSession(res, doc);
+  res.json({ account });
+});
+
+adminRouter.delete('/accounts/:id', validate(idParamSchema, 'params'), async (req, res) => {
+  res.json(await deleteAccount(req.valid.params.id, req.admin));
 });

@@ -9,7 +9,11 @@ import { TicketCard } from './TicketCard';
 
 const EMPTY_CONTACT = { clientName: '', clientPhone: '' };
 
-export function BookingWizard({ settings, onOpenCancel }) {
+/**
+ * `pick` ({ service, at }) comes from the hero quick-pick: it starts a fresh booking for that
+ * service and jumps to the date step. `at` makes picking the same service twice still count.
+ */
+export function BookingWizard({ settings, onOpenCancel, pick }) {
   const [step, setStep] = useState(1);
   const [service, setService] = useState(null);
   const [date, setDate] = useState(null);
@@ -28,6 +32,15 @@ export function BookingWizard({ settings, onOpenCancel }) {
     wizardRef.current?.scrollIntoView({ behavior: reduceMotion ? 'auto' : 'smooth', block: 'start' });
     headingRef.current?.focus({ preventScroll: true });
   }, [step]);
+
+  useEffect(() => {
+    if (!pick?.service) return;
+    setAppointment(null);
+    setDate(null);
+    setTime(null);
+    setService(pick.service);
+    setStep(2);
+  }, [pick]);
 
   const chooseService = (next) => {
     if (service?.key !== next.key) {
@@ -109,7 +122,7 @@ export function BookingWizard({ settings, onOpenCancel }) {
   }
 
   return (
-    <section ref={wizardRef} aria-label="Reserva tu cita" className="scroll-mt-4">
+    <section ref={wizardRef} aria-label="Pasos de tu reserva">
       <Stepper step={step} />
       <div key={step} className="animate-fade-up">
         {content}

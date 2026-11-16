@@ -38,6 +38,8 @@ export function toPublicSettings(settings) {
     booking: {
       windowDays: settings.booking.windowDays,
       minLeadMinutes: settings.booking.minLeadMinutes,
+      // Shown in «Lo que debes saber»; the server enforces it either way.
+      maxActivePerPhone: settings.booking.maxActivePerPhone,
     },
     blockedDates: (settings.blockedDates || []).filter((b) => b.date >= now.date).map((b) => ({ date: b.date })),
     now,

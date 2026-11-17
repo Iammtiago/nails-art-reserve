@@ -100,3 +100,32 @@ export function nowInTimezone(timezone, instant = new Date()) {
   const minutes = Number(map.hour) * 60 + Number(map.minute);
   return { date, minutes, time: toTime(minutes) };
 }
+
+const TYPED_RE = /^(\d{1,2})(?:\s*[:.h]\s*(\d{2})|(\d{2}))?\s*(?:([ap])\.?\s*m?\.?)?$/i;
+
+/**
+ * Reads a time typed by hand: «5:30», «6.45», «530», «17:30», «5:30 pm».
+ * `meridiem` ('am' | 'pm') applies to 1-12 when the text has no a. m./p. m. of its own.
+ * @returns {string|null} 'HH:mm', or null when it is not a time.
+ */
+export function parseTypedTime(text, meridiem = 'pm') {
+  const match = TYPED_RE.exec(String(text ?? '').trim());
+  if (!match) return null;
+  let h = Number(match[1]);
+  const m = Number(match[2] ?? match[3] ?? 0);
+  const suffix = match[4]?.toLowerCase();
+  if (h > 23 || m > 59) return null;
+  if (suffix && (h === 0 || h > 12)) return null;
+  const half = suffix ? `${suffix}m` : meridiem;
+  if (h >= 1 && h <= 12) {
+    if (half === 'am' && h === 12) h = 0;
+    else if (half === 'pm' && h < 12) h += 12;
+  }
+  return toTime(h * 60 + m);
+}
+
+/** a. m. or p. m. a salon most likely means for a bare 1-12 hour: 7-11 in the morning, the rest after noon. */
+export function guessMeridiem(text) {
+  const h = Number(/^\s*(\d{1,2})/.exec(String(text ?? ''))?.[1]);
+  return h >= 7 && h <= 11 ? 'am' : 'pm';
+}

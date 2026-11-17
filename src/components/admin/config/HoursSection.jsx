@@ -106,7 +106,7 @@ function DayRow({ day, index, errors, canCopy, onUpdate, onTogglePause, onCopy }
                 <TimeField label="Pausa hasta" value={day.breakEnd} error={err('breakEnd')} onChange={(breakEnd) => onUpdate({ breakEnd })} />
               </>
             ) : null}
-            <Field label="Bloque" error={err('slotDurationMinutes')}>
+            <Field label="Horas cada" error={err('slotDurationMinutes')}>
               {(p) => (
                 <Select {...p} value={day.slotDurationMinutes} onChange={(event) => onUpdate({ slotDurationMinutes: Number(event.target.value) })}>
                   {SLOT_DURATION_OPTIONS.includes(day.slotDurationMinutes) ? null : (
@@ -173,7 +173,7 @@ export function HoursSection({ hours, errors, onChange, delay, className = '' })
       id="horarios"
       icon={Clock}
       title="Horarios de atención"
-      description="El bloque marca cada cuánto empieza una cita, contando desde el inicio de cada turno."
+      description="«Horas cada» marca cada cuánto puede empezar una cita (por ejemplo cada 30 min: 8:30, 9:00, 9:30…). Cada cita ocupa lo que dura su servicio y tapa las horas que pisa."
       delay={delay}
       className={className}
     >

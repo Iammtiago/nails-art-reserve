@@ -57,10 +57,11 @@ El servidor exige la sesión de administración en todas las rutas del panel, en
 **Agenda**
 
 - Una clienta a la vez (capacidad 1).
-- Cada día tiene: abierto o cerrado, hora de apertura y cierre, pausa opcional (almuerzo) y **bloque fijo** (`slotDurationMinutes`, por defecto 60). Las horas de inicio salen cada bloque desde el inicio de cada turno; un servicio solo se ofrece si **cabe entero** en el turno sin cruzar la pausa ni chocar con otra cita.
+- Cada día tiene: abierto o cerrado, hora de apertura y cierre, pausa opcional (almuerzo) y **«Horas cada»** (`slotDurationMinutes`, por defecto 60; con 30 la clienta elige 8:30, 9:00, 9:30…). Las horas de inicio salen cada ese paso desde el inicio de cada turno; cada cita ocupa lo que dura su servicio en tramos de 15 min y tapa las horas que pisa; un servicio solo se ofrece si **cabe entero** en el turno sin cruzar la pausa ni chocar con otra cita.
 - Ejemplo con el horario actual y bloque de 60: Manicura → 8:30, 9:30, 10:30, 11:30, 14:00 … 18:00. Manicura + pedicura → 8:30, 9:30, 10:30, 14:00 … 17:00.
 - Reserva hasta **30 días** adelante; hoy, solo horarios que empiecen dentro de 60 min o más (`SUPUESTO`).
 - **Máximo 3 citas activas sin atender por teléfono** (decisión de Tiago).
+- «Nueva cita» del panel: horas libres sugeridas o la hora escrita a mano (5:30, 6:45, 17:30) con interruptor a. m./p. m., en tramos de 15 min y también fuera del horario.
 - Días bloqueados (libres, feriados) desde el Calendario; bloquear un día no cancela las citas ya agendadas: el panel avisa cuántas hay.
 - **Sin doble reserva garantizado por la base**: cada cita guarda los tramos de 15 min que ocupa y un índice único parcial `(date, tramo)` sobre las citas que retienen horario. Si dos personas confirman a la vez, una recibe `409` y vuelve al paso de elegir hora.
 

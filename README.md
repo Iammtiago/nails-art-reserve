@@ -92,7 +92,7 @@ npm run dev
 ## Reglas importantes
 
 - **Sin doble reserva:** cada cita guarda los tramos de 15 min que ocupa y un índice único parcial `(date, occupiedTicks)` impide que dos citas activas se pisen, aunque lleguen a la vez (probado con 8 reservas simultáneas). Quien llega segundo recibe `409` y vuelve a elegir hora.
-- Servicios por defecto: Manicura (1 h), Pedicura (1 h), Manicura + pedicura (2 h). Horario por defecto: lunes a sábado 8:30–12:30 y 14:00–19:00, domingo cerrado, bloques de 60 min. Todo editable en Configuración.
+- Servicios por defecto: Manicura (1 h), Pedicura (1 h), Manicura + pedicura (2 h). Horario por defecto: lunes a sábado 8:30–12:30 y 14:00–19:00, domingo cerrado, horas cada 60 min (se cambia a 30 en «Horas cada»). Todo editable en Configuración.
 - Máximo **3 citas activas** por teléfono; reservas hasta 30 días adelante; el mismo día, con 60 min de antelación.
 - La clienta cancela con su teléfono (debe coincidir con el de la cita) hasta la hora de inicio.
 - «Hoy» lo decide el servidor en `America/Caracas`, nunca el navegador.

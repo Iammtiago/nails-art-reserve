@@ -9,7 +9,7 @@ import { LIMITS, TICK_MINUTES } from '@shared/constants.js';
 import { formatDateLong, formatDuration, formatTime } from '@shared/format.js';
 import { candidateStarts, getDayConfig, ticksFor } from '@shared/schedule.js';
 import { adminAppointmentSchema, fieldErrorsFor, timeBlockSchema } from '@shared/schemas.js';
-import { toMinutes, toTime } from '@shared/time.js';
+import { guessMeridiem, parseTypedTime, toMinutes, toTime } from '@shared/time.js';
 import { ApiError, apiGet, apiPost } from '@/lib/api';
 import { useAsync } from '@/lib/hooks';
 import { TicketDownloadButton, TicketQr } from '@/components/admin/TicketDownload';
@@ -62,6 +62,94 @@ function SlotChips({ slots, value, onPick }) {
         </button>
       ))}
     </div>
+  );
+}
+
+/** 'HH:mm' -> { text: '5:30', meridiem: 'pm' } for the typed-time field. */
+function toTyped(time) {
+  const minutes = toMinutes(time);
+  const h = Math.floor(minutes / 60);
+  return { text: `${h % 12 || 12}:${String(minutes % 60).padStart(2, '0')}`, meridiem: h < 12 ? 'am' : 'pm' };
+}
+
+const MERIDIEMS = [
+  { value: 'am', label: 'a. m.' },
+  { value: 'pm', label: 'p. m.' },
+];
+
+/**
+ * Hour typed by hand («5:30», «6:45», «17:30») plus an a. m. / p. m. switch.
+ * Reports 'HH:mm' through onChange, or '' while the text is not a time on a 15-minute tick.
+ */
+function TypedTime({ value, onChange, error, hint }) {
+  const [text, setText] = useState(() => (value ? toTyped(value).text : ''));
+  const [meridiem, setMeridiem] = useState(() => (value ? toTyped(value).meridiem : 'pm'));
+  const [picked, setPicked] = useState(false);
+  const parsed = text.trim() ? parseTypedTime(text, meridiem) : null;
+  const offTick = parsed !== null && toMinutes(parsed) % TICK_MINUTES !== 0;
+  const typedError = text.trim() && parsed === null ? 'Escribe la hora así: 5:30 o 6:45.' : offTick ? `Usa tramos de ${TICK_MINUTES} minutos (por ejemplo 5:30 o 6:45).` : null;
+
+  // A chip picked above replaces what was typed.
+  useEffect(() => {
+    if (value && value !== parsed) {
+      const next = toTyped(value);
+      setText(next.text);
+      setMeridiem(next.meridiem);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [value]);
+
+  const report = (nextText, nextMeridiem) => {
+    const time = nextText.trim() ? parseTypedTime(nextText, nextMeridiem) : null;
+    onChange(time && toMinutes(time) % TICK_MINUTES === 0 ? time : '');
+  };
+
+  const hasOwnMeridiem = /[ap]\.?\s*m?\.?\s*$/i.test(text.trim()) || Number(/^\s*(\d{1,2})/.exec(text)?.[1]) > 12;
+
+  return (
+    <Field label="O escribe la hora (también fuera del horario)" className="mt-3" error={typedError || error} hint={hint}>
+      {(p) => (
+        <div className="flex gap-2">
+          <Input
+            {...p}
+            type="text"
+            inputMode="decimal"
+            autoComplete="off"
+            placeholder="5:30"
+            maxLength={10}
+            value={text}
+            onChange={(e) => {
+              const next = e.target.value;
+              const nextMeridiem = picked ? meridiem : guessMeridiem(next);
+              setText(next);
+              setMeridiem(nextMeridiem);
+              report(next, nextMeridiem);
+            }}
+            className="min-w-0 flex-1 tabular-nums"
+          />
+          <div role="group" aria-label="Mañana o tarde" className="flex shrink-0 rounded-xl border border-line bg-surface/80 p-1">
+            {MERIDIEMS.map((m) => (
+              <button
+                key={m.value}
+                type="button"
+                aria-pressed={meridiem === m.value}
+                disabled={hasOwnMeridiem}
+                onClick={() => {
+                  setPicked(true);
+                  setMeridiem(m.value);
+                  report(text, m.value);
+                }}
+                className={`min-h-[40px] min-w-[52px] rounded-lg px-2 text-sm font-semibold transition disabled:opacity-50 ${
+                  meridiem === m.value ? 'bg-primary text-primary-on' : 'text-ink-2 hover:text-ink'
+                }`}
+              >
+                {m.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+    </Field>
   );
 }
 
@@ -142,14 +230,12 @@ function ManualForm({ initialDate, onDone, onCancel }) {
       <div>
         <p className="field-label">Hora</p>
         <SlotChips slots={slots} value={form.timeSlot} onPick={(t) => set('timeSlot', t)} />
-        <Field
-          label="Otra hora (también fuera del horario)"
-          className="mt-3"
+        <TypedTime
+          value={form.timeSlot}
+          onChange={(t) => set('timeSlot', t)}
           error={errors.timeSlot || (clash ? 'Esa hora choca con otra cita u horario ocupado.' : undefined)}
-          hint={chosen !== null ? `Termina a las ${formatTime(toTime(chosen + duration))}.` : 'En tramos de 15 minutos.'}
-        >
-          {(p) => <Input {...p} type="time" step={TICK_MINUTES * 60} value={form.timeSlot} onChange={(e) => set('timeSlot', e.target.value)} />}
-        </Field>
+          hint={chosen !== null ? `De ${formatTime(form.timeSlot)} a ${formatTime(toTime(chosen + duration))}: ese rato queda ocupado.` : 'Por ejemplo 5:30 o 6:45.'}
+        />
       </div>
       <div className="sticky bottom-0 -mx-1 flex flex-col-reverse gap-2 bg-gradient-to-t from-surface via-surface/95 to-transparent px-1 pt-3 sm:flex-row sm:justify-end">
         <Button variant="secondary" onClick={onCancel}>

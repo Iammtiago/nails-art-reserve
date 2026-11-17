@@ -51,14 +51,14 @@ export function HowItWorks() {
   return (
     <section className="px-4 py-14 sm:px-6 sm:py-20" aria-labelledby="como-funciona">
       <div className="mx-auto max-w-6xl">
-        <SectionHeading id="como-funciona" eyebrow="Así de fácil" title="Tu cita en tres toques" center />
+        <SectionHeading id="como-funciona" eyebrow="Así de fácil" title={<>Tu cita en <span className="accent-word">tres toques</span></>} center />
         <ol className="mt-10 grid gap-4 md:grid-cols-3">
           {STEPS.map(({ icon: Icon, title, text }, index) => (
-            <li key={title} className="glass relative flex items-start gap-4 overflow-hidden p-5 md:block md:p-6">
-              <span aria-hidden="true" className="absolute -right-2 -top-6 font-display text-[6rem] font-semibold leading-none text-secondary/40 md:text-[7rem]">
+            <li key={title} className="glass reveal relative flex items-start gap-4 overflow-hidden p-5 md:block md:p-6">
+              <span aria-hidden="true" className="absolute -right-2 -top-6 font-display text-[6rem] font-semibold italic leading-none text-secondary/50 md:text-[7rem]">
                 {index + 1}
               </span>
-              <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-primary text-primary-on shadow-lift md:h-12 md:w-12" aria-hidden="true">
+              <span className="tile-brand relative h-11 w-11 rounded-2xl md:h-12 md:w-12" aria-hidden="true">
                 <Icon className="h-[22px] w-[22px]" />
               </span>
               <div className="relative min-w-0">
@@ -108,20 +108,23 @@ export function GoodToKnow({ settings, onCancelClick }) {
           <SectionHeading
             id="debes-saber"
             eyebrow="Antes de tu cita"
-            title="Lo que debes saber"
+            title={<>Lo que <span className="accent-word">debes saber</span></>}
             description="Reglas claras para que tu tiempo, y el de las demás, valga oro."
           />
-          <div className="mt-6 flex items-start gap-3 rounded-2xl bg-primary-soft/70 p-4 text-sm text-ink-2">
-            <ShieldCheck aria-hidden="true" className="mt-0.5 h-5 w-5 shrink-0 text-primary-ink" />
-            <p>
-              <span className="font-semibold text-ink">Nunca dos citas a la misma hora.</span> Cuando reservas, ese horario es solo tuyo.
+          <div className="glass-deep reveal mt-6 flex items-start gap-3.5 p-5 text-sm">
+            <span className="tile-on-deep h-10 w-10" aria-hidden="true">
+              <ShieldCheck className="h-5 w-5" />
+            </span>
+            <p className="text-on-deep-2 leading-relaxed">
+              <span className="block font-display text-lg font-semibold text-white">Nunca dos citas a la misma hora.</span>
+              Cuando reservas, ese horario es solo tuyo: nadie más puede tomarlo.
             </p>
           </div>
         </div>
         <ul className="grid gap-3 sm:grid-cols-2">
           {items.map(({ icon: Icon, title, text, action }) => (
-            <li key={title} className="glass flex items-start gap-4 p-4 sm:flex-col sm:gap-0 sm:p-5">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-secondary-soft text-primary-ink" aria-hidden="true">
+            <li key={title} className="glass reveal flex items-start gap-4 p-4 sm:flex-col sm:gap-0 sm:p-5">
+              <span className="tile h-10 w-10" aria-hidden="true">
                 <Icon className="h-5 w-5" />
               </span>
               <div className="flex min-w-0 flex-1 flex-col sm:mt-4">
@@ -147,9 +150,11 @@ export function GoodToKnow({ settings, onCancelClick }) {
 export function QuoteBand() {
   return (
     <section className="px-4 py-6 sm:px-6" aria-label="Frase del salón">
-      <figure className="relative mx-auto max-w-6xl overflow-hidden rounded-[2rem] bg-gradient-to-br from-primary via-primary to-accent px-6 py-12 text-center text-primary-on shadow-lift sm:px-12 sm:py-16">
+      <figure className="reveal relative mx-auto max-w-6xl overflow-hidden rounded-[2rem] bg-gradient-to-br from-primary via-primary to-accent px-6 py-12 text-center text-primary-on shadow-lift sm:px-12 sm:py-16">
         <div aria-hidden="true" className="absolute -left-16 -top-16 h-56 w-56 rounded-full bg-secondary/25 blur-3xl" />
         <div aria-hidden="true" className="absolute -bottom-20 -right-10 h-64 w-64 rounded-full bg-accent/50 blur-3xl" />
+        <span aria-hidden="true" className="sparkle sparkle-twinkle absolute left-[12%] top-10 h-5 w-5 text-secondary sm:h-7 sm:w-7" />
+        <span aria-hidden="true" className="sparkle sparkle-twinkle absolute bottom-10 right-[14%] h-4 w-4 text-white/80 [animation-delay:-1.6s] sm:h-5 sm:w-5" />
         <Quote aria-hidden="true" className="relative mx-auto h-9 w-9 text-secondary" />
         <blockquote className="relative mx-auto mt-4 max-w-3xl text-balance font-display text-[1.85rem] font-semibold italic leading-tight text-white sm:text-5xl">
           Tus manos hablan por ti antes que tú. Haz que digan algo bonito.
@@ -174,7 +179,7 @@ function ContactLink({ href, external = false, icon: Icon, title, detail, tone =
     >
       <span
         aria-hidden="true"
-        className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${whatsapp ? 'bg-white/15' : 'bg-secondary-soft text-primary-ink'}`}
+        className={whatsapp ? 'grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/15' : 'tile h-10 w-10'}
       >
         <Icon className="h-5 w-5" />
       </span>
@@ -197,9 +202,9 @@ export function VisitInfo({ settings }) {
   return (
     <section className="px-4 py-14 sm:px-6 sm:py-20" aria-labelledby="horario">
       <div className="mx-auto grid max-w-6xl gap-4 lg:grid-cols-2 [&>*]:min-w-0">
-        <div className="glass p-6 sm:p-8">
+        <div className="glass reveal p-6 sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-3">
-            <SectionHeading id="horario" eyebrow="Horario" title="Cuándo atendemos" />
+            <SectionHeading id="horario" eyebrow="Horario" title={<>Cuándo <span className="accent-word">atendemos</span></>} />
             {status ? (
               <span className={`chip mt-1 ${status.open ? 'bg-success-soft text-success' : 'bg-primary-soft text-ink-2'}`}>
                 <span className="h-2 w-2 rounded-full bg-current" aria-hidden="true" />
@@ -207,21 +212,24 @@ export function VisitInfo({ settings }) {
               </span>
             ) : null}
           </div>
-          <dl className="mt-6 divide-y divide-line/80">
+          <dl className="mt-6 space-y-1">
             {hours.map((row) => {
               const isToday = dow !== null && row.key.split('-').map(Number).includes(dow);
               return (
-                <div key={row.key} className={`flex items-start justify-between gap-4 py-3 ${isToday ? 'font-semibold' : ''}`}>
+                <div
+                  key={row.key}
+                  className={`flex items-start justify-between gap-3 rounded-xl px-2.5 py-2.5 sm:gap-4 sm:px-3 ${isToday ? 'bg-secondary-soft font-semibold ring-1 ring-secondary' : ''}`}
+                >
                   <dt className="flex shrink-0 items-center gap-2 text-ink">
                     {row.days}
-                    {isToday ? <span className="chip bg-secondary-soft py-0.5 text-[0.7rem] text-primary-ink">Hoy</span> : null}
+                    {isToday ? <span className="chip bg-brand-grad py-0.5 text-[0.7rem] text-white">Hoy</span> : null}
                   </dt>
                   <dd className="text-right text-sm text-ink-2">
                     {row.closed ? (
                       <span className="text-ink-3">Cerrado</span>
                     ) : (
                       row.ranges.map((range, index) => (
-                        <span key={range} className="block whitespace-nowrap sm:inline">
+                        <span key={range} className="block min-[360px]:whitespace-nowrap sm:inline">
                           {index > 0 ? <span className="hidden sm:inline"> · </span> : null}
                           {range}
                         </span>
@@ -234,7 +242,7 @@ export function VisitInfo({ settings }) {
           </dl>
         </div>
 
-        <div className="glass flex flex-col p-6 sm:p-8">
+        <div className="glass reveal flex flex-col p-6 sm:p-8">
           <SectionHeading eyebrow="Contacto" title="¿Dudas? Escríbenos" description="Escríbenos por WhatsApp o llámanos en horario de atención." />
           <div className="mt-6 grid gap-3">
             {settings.phone ? (
@@ -264,13 +272,15 @@ export function Faq({ settings }) {
   return (
     <section className="px-4 py-14 sm:px-6 sm:py-20" aria-labelledby="preguntas">
       <div className="mx-auto max-w-3xl">
-        <SectionHeading id="preguntas" eyebrow="Preguntas frecuentes" title="Todo claro antes de venir" center />
+        <SectionHeading id="preguntas" eyebrow="Preguntas frecuentes" title={<>Todo claro <span className="accent-word">antes de venir</span></>} center />
         <div className="mt-8 space-y-3">
           {questions.map(({ q, a }) => (
-            <details key={q} className="glass group p-0 [&_summary::-webkit-details-marker]:hidden">
+            <details key={q} className="glass reveal group p-0 [&_summary::-webkit-details-marker]:hidden">
               <summary className="flex min-h-[56px] cursor-pointer list-none items-center justify-between gap-4 rounded-[inherit] px-5 py-3 font-semibold text-ink">
                 {q}
-                <ChevronDown aria-hidden="true" className="h-5 w-5 shrink-0 text-ink-3 transition group-open:rotate-180" />
+                <span className="tile h-8 w-8 rounded-lg transition group-open:rotate-180" aria-hidden="true">
+                  <ChevronDown className="h-4 w-4" />
+                </span>
               </summary>
               <p className="px-5 pb-5 text-sm leading-relaxed text-ink-2">{a}</p>
             </details>
@@ -287,20 +297,20 @@ export function FinalCta({ settings }) {
   const tel = telLink(settings.phone);
   return (
     <section className="px-4 pb-6 pt-8 sm:px-6" aria-labelledby="cta-final">
-      <div className="glass glass-strong relative mx-auto max-w-6xl overflow-hidden px-6 py-12 text-center sm:px-12 sm:py-16">
-        <div aria-hidden="true" className="absolute inset-x-0 -top-24 mx-auto h-48 w-2/3 rounded-full bg-secondary/60 blur-3xl" />
-        <Sparkles aria-hidden="true" className="relative mx-auto h-8 w-8 text-accent-ink" />
+      <div className="glass-deep reveal relative mx-auto max-w-6xl overflow-hidden px-6 py-12 text-center sm:px-12 sm:py-16">
+        <div aria-hidden="true" className="absolute inset-x-0 -top-24 -z-10 mx-auto h-48 w-2/3 rounded-full bg-accent/40 blur-3xl" />
+        <Sparkles aria-hidden="true" className="relative mx-auto h-8 w-8 text-secondary" />
         <h2 id="cta-final" className="relative mt-3 text-balance font-display text-3xl font-semibold sm:text-5xl">
-          ¿Lista para consentirte?
+          ¿Lista para <span className="accent-word">consentirte?</span>
         </h2>
-        <p className="relative mx-auto mt-3 max-w-xl text-ink-2 sm:text-lg">Tu próxima cita está a un minuto. Elige tu hora antes de que alguien más la tome.</p>
+        <p className="text-on-deep-2 relative mx-auto mt-3 max-w-xl sm:text-lg">Tu próxima cita está a un minuto. Elige tu hora antes de que alguien más la tome.</p>
         <div className="relative mt-7 flex flex-col justify-center gap-3 min-[420px]:flex-row">
-          <a href="#reservar" className="btn btn-primary btn-lg">
+          <a href="#reservar" className="btn btn-light btn-lg">
             <CalendarHeart aria-hidden="true" className="h-5 w-5" />
             Agendar mi cita
           </a>
           {tel ? (
-            <a href={tel} className="btn btn-secondary btn-lg">
+            <a href={tel} className="btn btn-outline-light btn-lg">
               <Phone aria-hidden="true" className="h-5 w-5" />
               Llamar
             </a>

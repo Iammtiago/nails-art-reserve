@@ -74,10 +74,10 @@ function HeroVisual({ settings, onPickService }) {
         </div>
       </div>
 
-      {/* Quick pick */}
-      <div className="glass glass-strong relative mr-10 mt-40 -rotate-1 p-5 shadow-lift">
-        <p className="eyebrow">¿Qué te haces hoy?</p>
-        <p className="mt-1 text-sm text-ink-2">Toca un servicio y elige tu hora.</p>
+      {/* Quick pick: the featured card, on the deep surface. */}
+      <div className="glass-deep relative mr-10 mt-40 -rotate-1 p-5">
+        <p className="eyebrow !text-secondary">¿Qué te haces hoy?</p>
+        <p className="text-on-deep-2 mt-1 text-sm">Toca un servicio y elige tu hora.</p>
         <ul className="mt-4 space-y-2">
           {services.slice(0, 5).map((service) => {
             const Icon = serviceIcon(service);
@@ -86,20 +86,20 @@ function HeroVisual({ settings, onPickService }) {
                 <button
                   type="button"
                   onClick={() => onPickService(service)}
-                  className="group flex min-h-[52px] w-full items-center gap-3 rounded-2xl border border-line bg-surface/80 px-3 text-left transition hover:-translate-y-px hover:border-secondary hover:bg-surface hover:shadow-glass"
+                  className="group flex min-h-[52px] w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.07] px-3 text-left transition hover:-translate-y-px hover:border-white/25 hover:bg-white/[0.14]"
                 >
-                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary-soft text-primary-ink" aria-hidden="true">
+                  <span className="tile-on-deep h-9 w-9" aria-hidden="true">
                     <Icon className="h-[18px] w-[18px]" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-ink">{service.name}</span>
-                    <span className="flex items-center gap-1 text-xs text-ink-2">
+                    <span className="block truncate text-sm font-semibold text-white">{service.name}</span>
+                    <span className="text-on-deep-2 flex items-center gap-1 text-xs">
                       <Clock aria-hidden="true" className="h-3 w-3" />
                       {formatDuration(service.durationMinutes)}
                     </span>
                   </span>
-                  <span className="text-xs font-semibold text-primary-ink opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">Reservar</span>
-                  <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-ink-3 transition group-hover:translate-x-0.5 group-hover:text-primary-ink" />
+                  <span className="text-xs font-semibold text-secondary opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">Reservar</span>
+                  <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-white/60 transition group-hover:translate-x-0.5 group-hover:text-white" />
                 </button>
               </li>
             );
@@ -115,6 +115,39 @@ function HeroVisual({ settings, onPickService }) {
   );
 }
 
+/** Phones and tablets: the same «pick your service» shortcut as the desktop card, as a strip. */
+function QuickPickStrip({ services, onPickService }) {
+  if (!services.length) return null;
+  return (
+    <div className="glass-deep -mt-4 p-4 lg:hidden">
+      <p className="eyebrow !text-secondary">¿Qué te haces hoy?</p>
+      <ul className="mt-3 grid gap-2 sm:grid-cols-3">
+        {services.slice(0, 6).map((service) => {
+          const Icon = serviceIcon(service);
+          return (
+            <li key={service.key} className="min-w-0">
+              <button
+                type="button"
+                onClick={() => onPickService(service)}
+                className="flex min-h-[52px] w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.07] px-3 text-left transition active:scale-[0.99] hover:bg-white/[0.14]"
+              >
+                <span className="tile-on-deep h-9 w-9" aria-hidden="true">
+                  <Icon className="h-[18px] w-[18px]" />
+                </span>
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-white">{service.name}</span>
+                  <span className="text-on-deep-2 block text-xs">{formatDuration(service.durationMinutes)}</span>
+                </span>
+                <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-white/60" />
+              </button>
+            </li>
+          );
+        })}
+      </ul>
+    </div>
+  );
+}
+
 export function Hero({ settings, onPickService }) {
   const status = useMemo(() => openStatus(settings), [settings]);
   return (
@@ -126,8 +159,10 @@ export function Hero({ settings, onPickService }) {
             <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
             {settings.businessName} · Salón de uñas
           </p>
-          <h1 id="hero-title" className="mt-3 text-balance font-display text-[2.35rem] font-semibold leading-[1.05] sm:text-6xl lg:text-[4.1rem]">
-            No existen manos feas, <span className="bg-gradient-to-r from-primary to-accent bg-clip-text pr-[0.1em] italic text-transparent [-webkit-box-decoration-break:clone] [box-decoration-break:clone]">solo uñas sin cita.</span>
+          <h1 id="hero-title" className="relative mt-3 text-balance font-display text-[2.35rem] font-semibold leading-[1.05] sm:text-6xl lg:text-[4.1rem]">
+            No existen manos feas, <span className="accent-word">solo uñas sin cita.</span>
+            <span aria-hidden="true" className="sparkle sparkle-twinkle absolute -top-3 right-[8%] h-6 w-6 text-accent sm:h-8 sm:w-8" />
+            <span aria-hidden="true" className="sparkle sparkle-twinkle absolute -bottom-2 right-[30%] h-3.5 w-3.5 text-secondary [animation-delay:-1.4s] sm:h-4 sm:w-4" />
           </h1>
           <p className="mt-5 max-w-xl text-pretty text-base leading-relaxed text-ink-2 sm:text-lg">
             Consiéntete sin escribir mil mensajes: elige tu servicio, el día y la hora, y en menos de un minuto tienes tu cita confirmada con su ticket QR.
@@ -151,7 +186,7 @@ export function Hero({ settings, onPickService }) {
           <ul className="mt-7 grid grid-cols-3 gap-2 text-center text-xs font-medium leading-tight text-ink-2 sm:flex sm:flex-wrap sm:gap-x-5 sm:gap-y-2.5 sm:text-left sm:text-sm">
             {PERKS.map(({ icon: Icon, label }) => (
               <li key={label} className="flex flex-col items-center gap-1.5 sm:flex-row sm:gap-2">
-                <span className="grid h-8 w-8 place-items-center rounded-lg bg-secondary-soft text-primary-ink sm:h-7 sm:w-7" aria-hidden="true">
+                <span className="tile h-8 w-8 rounded-lg sm:h-7 sm:w-7" aria-hidden="true">
                   <Icon className="h-4 w-4" />
                 </span>
                 {label}
@@ -160,6 +195,7 @@ export function Hero({ settings, onPickService }) {
           </ul>
         </div>
 
+        <QuickPickStrip services={settings.services || []} onPickService={onPickService} />
         <HeroVisual settings={settings} onPickService={onPickService} />
       </div>
     </section>

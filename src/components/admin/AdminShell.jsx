@@ -37,7 +37,7 @@ function NavLink({ item, active, compact }) {
         href={item.href}
         aria-current={active ? 'page' : undefined}
         className={`flex min-h-[56px] flex-1 flex-col items-center justify-center gap-0.5 rounded-2xl text-[0.7rem] font-semibold transition ${
-          active ? 'bg-secondary-soft text-primary-ink' : 'text-ink-2 hover:text-ink'
+          active ? 'bg-brand-grad text-white shadow-lift ring-1 ring-white/20' : 'text-white/75 hover:bg-white/10 hover:text-white'
         }`}
       >
         <Icon aria-hidden="true" className="h-5 w-5" />
@@ -49,11 +49,12 @@ function NavLink({ item, active, compact }) {
     <Link
       href={item.href}
       aria-current={active ? 'page' : undefined}
-      className={`group flex min-h-[44px] shrink-0 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition ${
-        active ? 'bg-primary text-primary-on shadow-lift' : 'text-ink-2 hover:bg-primary-soft hover:text-ink'
+      className={`group relative flex min-h-[44px] shrink-0 items-center gap-3 rounded-xl px-3 text-sm font-semibold transition ${
+        active ? 'bg-brand-grad text-white shadow-lift ring-1 ring-white/20' : 'text-white/75 hover:bg-white/10 hover:text-white'
       }`}
     >
-      <Icon aria-hidden="true" className="h-5 w-5" />
+      {active ? <span aria-hidden="true" className="absolute -left-3 top-1/2 h-6 w-1 -translate-y-1/2 rounded-r-full bg-secondary" /> : null}
+      <Icon aria-hidden="true" className={`h-5 w-5 ${active ? '' : 'text-secondary'}`} />
       {item.label}
     </Link>
   );
@@ -129,36 +130,37 @@ export function AdminShell({ children }) {
         {/* Sidebar (desktop) */}
         {/* Fixed to the viewport; the nav scrolls on its own if the window is very short. */}
         <aside className="sticky top-0 hidden h-dvh w-64 shrink-0 p-4 lg:block">
-          <div className="glass flex h-full flex-col overflow-hidden p-3">
+          <div className="glass-deep flex h-full flex-col overflow-hidden p-3">
             <div className="flex items-center gap-3 px-2 pb-4 pt-1">
               <BrandLogo src={logoUrl} name={businessName} size={42} />
               <div className="min-w-0">
-                <p className="truncate font-display text-lg font-semibold leading-tight">{businessName}</p>
-                <p className="truncate text-xs font-medium text-ink-3">Panel de administración</p>
+                <p className="truncate font-display text-lg font-semibold leading-tight text-white">{businessName}</p>
+                <p className="text-on-deep-2 truncate text-xs font-medium">Panel de administración</p>
               </div>
             </div>
+            <div aria-hidden="true" className="mx-2 mb-3 h-px bg-gradient-to-r from-white/0 via-white/20 to-white/0" />
             <nav className="-mx-1 flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-1 [scrollbar-width:thin]" aria-label="Secciones del panel">
               {[...ADMIN_NAV, ACCOUNTS_NAV].map((item) => (
                 <NavLink key={item.href} item={item} active={pathname?.startsWith(item.href)} />
               ))}
-              <a href="/" target="_blank" rel="noopener noreferrer" className="mt-auto flex min-h-[44px] shrink-0 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-ink-2 transition hover:bg-primary-soft hover:text-ink">
-                <ExternalLink aria-hidden="true" className="h-5 w-5 shrink-0" />
+              <a href="/" target="_blank" rel="noopener noreferrer" className="mt-auto flex min-h-[44px] shrink-0 items-center gap-3 rounded-xl px-3 text-sm font-semibold text-white/75 transition hover:bg-white/10 hover:text-white">
+                <ExternalLink aria-hidden="true" className="h-5 w-5 shrink-0 text-secondary" />
                 Ver reservas
                 <span className="sr-only"> (página pública, se abre en otra pestaña)</span>
               </a>
             </nav>
-            <div className="mt-3 flex shrink-0 items-center gap-2.5 rounded-2xl bg-primary-soft/60 p-2">
-              <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-primary font-display text-base font-semibold text-primary-on">
+            <div className="mt-3 flex shrink-0 items-center gap-2.5 rounded-2xl bg-white/[0.08] p-2 ring-1 ring-white/10">
+              <span aria-hidden="true" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-secondary font-display text-base font-semibold text-[var(--color-text)]">
                 {username.slice(0, 1).toUpperCase()}
               </span>
               <div className="min-w-0 flex-1">
-                <p className="truncate text-xs text-ink-3">{hello},</p>
-                <p className="truncate text-sm font-semibold text-ink">{username}</p>
+                <p className="text-on-deep-2 truncate text-xs">{hello},</p>
+                <p className="truncate text-sm font-semibold text-white">{username}</p>
               </div>
               <button
                 type="button"
                 onClick={logout}
-                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-ink-2 transition hover:bg-danger-soft hover:text-danger"
+                className="grid h-10 w-10 shrink-0 place-items-center rounded-xl text-white/75 transition hover:bg-white/15 hover:text-white"
                 aria-label="Cerrar sesión"
                 title="Cerrar sesión"
               >
@@ -209,7 +211,7 @@ export function AdminShell({ children }) {
         className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] lg:hidden"
         aria-label="Secciones del panel"
       >
-        <div className="glass glass-strong flex gap-1 rounded-3xl p-1.5">
+        <div className="glass-deep flex gap-1 rounded-3xl p-1.5">
           {ADMIN_NAV.map((item) => (
             <NavLink key={item.href} item={item} active={pathname?.startsWith(item.href)} compact />
           ))}

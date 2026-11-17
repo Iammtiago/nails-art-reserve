@@ -1,6 +1,7 @@
 'use client';
 
 import { CalendarHeart, CalendarX2, Phone } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { BrandLogo } from '@/components/ui/BrandLogo';
 import { telLink } from './landing-utils';
 
@@ -10,16 +11,29 @@ const ACTION =
 
 export function SiteHeader({ settings, onCancelClick }) {
   const tel = telLink(settings.phone);
+  // The bar tightens and lifts once the page scrolls.
+  const [scrolled, setScrolled] = useState(false);
+  useEffect(() => {
+    const update = () => setScrolled(window.scrollY > 24);
+    update();
+    window.addEventListener('scroll', update, { passive: true });
+    return () => window.removeEventListener('scroll', update);
+  }, []);
+
   return (
     <header className="sticky top-0 z-40 px-3 pt-[max(0.5rem,env(safe-area-inset-top))] sm:px-6 sm:pt-3">
-      <div className="glass glass-strong mx-auto flex max-w-6xl items-center justify-between gap-2 rounded-2xl py-1.5 pl-2 pr-1.5 sm:rounded-3xl sm:py-2 sm:pl-3 sm:pr-2">
+      <div
+        className={`glass glass-strong mx-auto flex items-center justify-between gap-2 rounded-2xl py-1.5 pl-2 pr-1.5 transition-[max-width,box-shadow] duration-300 sm:rounded-3xl sm:pl-3 sm:pr-2 ${
+          scrolled ? 'max-w-4xl shadow-lift sm:py-1.5' : 'max-w-6xl sm:py-2'
+        }`}
+      >
         <a href="#inicio" className="flex min-h-[44px] min-w-0 items-center gap-2.5 rounded-xl pr-1" aria-label={`${settings.businessName}, ir al inicio`}>
           <BrandLogo src={settings.logoUrl} name={settings.businessName} size={38} />
           <span className="hidden truncate font-display text-lg font-semibold leading-tight text-ink min-[400px]:block">{settings.businessName}</span>
         </a>
 
         <nav aria-label="Acciones rápidas" className="flex shrink-0 items-center gap-1 sm:gap-1.5">
-          <a href="#reservar" className={`${ACTION} bg-primary text-primary-on shadow-lift hover:brightness-110`}>
+          <a href="#reservar" className={`${ACTION} bg-brand-grad text-primary-on shadow-lift hover:brightness-110`}>
             <CalendarHeart aria-hidden="true" className="h-[18px] w-[18px]" />
             Agendar
           </a>

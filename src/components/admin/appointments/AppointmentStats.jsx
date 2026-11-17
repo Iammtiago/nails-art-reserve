@@ -20,6 +20,7 @@ export function AppointmentStats({ summary }) {
             hint={item.hint}
             icon={item.icon}
             tone={item.tone}
+            featured={index === 0}
           />
         </div>
       ))}

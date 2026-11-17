@@ -29,7 +29,7 @@ export function ClientsStats({ summary, unavailable = false }) {
       {stats.map((stat, index) => (
         <div key={stat.label} className="enter" style={staggerDelay(index, 50)}>
           {summary || unavailable ? (
-            <Stat label={stat.label} value={summary ? (stat.value ?? 0) : '—'} hint={stat.hint} icon={stat.icon} tone={stat.tone} />
+            <Stat label={stat.label} value={summary ? (stat.value ?? 0) : '—'} hint={stat.hint} icon={stat.icon} tone={stat.tone} featured={index === 0} />
           ) : (
             <StatSkeleton />
           )}

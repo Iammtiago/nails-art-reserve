@@ -48,7 +48,7 @@ function BookingPortal({ settings }) {
               <div className="mb-6 text-center">
                 <p className="eyebrow">Reserva en línea</p>
                 <h2 id="reservar-title" className="mt-2 font-display text-3xl font-semibold sm:text-4xl">
-                  Agenda tu cita
+                  Agenda tu <span className="accent-word">cita</span>
                 </h2>
                 <p className="mt-2 text-ink-2">Cuatro pasos y listo. Solo ves los horarios que están libres de verdad.</p>
               </div>

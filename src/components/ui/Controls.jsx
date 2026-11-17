@@ -86,7 +86,10 @@ export function PageHeader({ title, description, actions, eyebrow }) {
     <header className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
         {eyebrow ? <p className="eyebrow mb-1">{eyebrow}</p> : null}
-        <h1 className="font-display text-2xl font-semibold sm:text-3xl">{title}</h1>
+        <h1 className="flex items-center gap-2.5 font-display text-[1.7rem] font-semibold leading-tight sm:text-4xl">
+          {title}
+          <span aria-hidden="true" className="sparkle sparkle-twinkle h-4 w-4 shrink-0 text-accent sm:h-5 sm:w-5" />
+        </h1>
         {description ? <p className="mt-1 text-sm text-ink-2 sm:text-base">{description}</p> : null}
       </div>
       {actions ? <div className="flex shrink-0 flex-wrap gap-2">{actions}</div> : null}
@@ -94,25 +97,27 @@ export function PageHeader({ title, description, actions, eyebrow }) {
   );
 }
 
-/** Small KPI tile. */
-export function Stat({ label, value, hint, icon: Icon, tone = 'brand' }) {
+/** Small KPI tile. `featured` puts it on the deep surface (one per strip). */
+export function Stat({ label, value, hint, icon: Icon, tone = 'brand', featured = false }) {
   const tones = {
-    brand: 'bg-secondary-soft text-primary-ink',
-    success: 'bg-success-soft text-success',
-    danger: 'bg-danger-soft text-danger',
-    accent: 'bg-accent-soft text-accent-ink',
+    brand: 'tile',
+    success: 'grid place-items-center rounded-xl bg-success-soft text-success',
+    danger: 'grid place-items-center rounded-xl bg-danger-soft text-danger',
+    accent: 'tile-brand',
   };
   return (
-    <div className="glass flex flex-col items-start gap-2 p-3.5 min-[480px]:flex-row min-[480px]:items-center min-[480px]:gap-3 min-[480px]:p-4">
+    <div
+      className={`${featured ? 'glass-deep' : 'glass'} flex flex-col items-start gap-2 p-3.5 min-[480px]:flex-row min-[480px]:items-center min-[480px]:gap-3 min-[480px]:p-4`}
+    >
       {Icon ? (
-        <div className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl min-[480px]:h-11 min-[480px]:w-11 ${tones[tone] || tones.brand}`}>
+        <div className={`h-10 w-10 shrink-0 min-[480px]:h-11 min-[480px]:w-11 ${featured ? 'tile-on-deep' : tones[tone] || tones.brand}`}>
           <Icon aria-hidden="true" className="h-5 w-5" />
         </div>
       ) : null}
       <div className="min-w-0">
-        <p className="text-xs font-semibold uppercase tracking-wide text-ink-3">{label}</p>
-        <p className="font-display text-2xl font-semibold leading-tight text-ink">{value}</p>
-        {hint ? <p className="truncate text-xs text-ink-2">{hint}</p> : null}
+        <p className={`text-xs font-semibold uppercase tracking-wide ${featured ? 'text-on-deep-accent' : 'text-ink-3'}`}>{label}</p>
+        <p className={`font-display text-[1.65rem] font-semibold leading-tight ${featured ? 'text-white' : 'text-ink'}`}>{value}</p>
+        {hint ? <p className={`truncate text-xs ${featured ? 'text-on-deep-2' : 'text-ink-2'}`}>{hint}</p> : null}
       </div>
     </div>
   );

@@ -52,9 +52,15 @@ function WeekAppointmentBlock({ appointment, frame, onOpen }) {
   const top = toPercent(Math.max(start, frame.start), frame);
   const height = toPercent(Math.min(end, frame.end), frame) - top;
   const completed = appointment.status === APPOINTMENT_STATUS.COMPLETED;
+  const block = appointment.kind === 'block';
   const label = `${formatTimeRange(appointment.timeSlot, appointment.endTime)}, ${appointment.clientName}, ${appointment.serviceName}, ${
-    STATUS_LABELS[appointment.status] || appointment.status
+    block ? 'Ocupado' : STATUS_LABELS[appointment.status] || appointment.status
   }`;
+  const tone = block
+    ? 'border-ink-3 bg-[repeating-linear-gradient(135deg,rgb(var(--color-primary-soft-rgb)),rgb(var(--color-primary-soft-rgb))_6px,rgb(var(--color-surface-rgb))_6px,rgb(var(--color-surface-rgb))_12px)]'
+    : completed
+      ? 'border-success bg-success-soft'
+      : 'border-primary bg-secondary-soft';
   return (
     <button
       type="button"
@@ -62,11 +68,11 @@ function WeekAppointmentBlock({ appointment, frame, onOpen }) {
       aria-label={label}
       title={label}
       className={`absolute inset-x-1 z-10 flex flex-col overflow-hidden rounded-lg border-l-4 px-2 py-1 text-left text-xs leading-snug shadow-sm transition hover:z-20 hover:shadow-lift focus-visible:z-20 ${
-        completed ? 'border-success bg-success-soft' : 'border-primary bg-secondary-soft'
+        tone
       }`}
       style={{ top: `${top}%`, height: `${height}%` }}
     >
-      <span className={`font-semibold ${completed ? 'text-success' : 'text-primary-ink'}`}>{formatTime(appointment.timeSlot)}</span>
+      <span className={`font-semibold ${block ? 'text-ink-2' : completed ? 'text-success' : 'text-primary-ink'}`}>{formatTime(appointment.timeSlot)}</span>
       <span className="truncate font-semibold text-ink">{appointment.clientName}</span>
       <span className="truncate text-ink-2">{appointment.serviceName}</span>
     </button>

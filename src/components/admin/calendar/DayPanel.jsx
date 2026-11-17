@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, Lock, LockOpen } from 'lucide-react';
+import { AlertTriangle, CalendarPlus, Clock, Lock, LockOpen } from 'lucide-react';
 import { useState } from 'react';
 import { LIMITS } from '@shared/constants.js';
 import { formatDateLong, formatDuration, formatTimeRange, pluralize } from '@shared/format.js';
@@ -47,7 +47,7 @@ function DayAppointment({ appointment, onOpen }) {
           {appointment.clientName} · {appointment.serviceName}
         </span>
       </span>
-      <StatusBadge status={appointment.status} />
+      <StatusBadge status={appointment.status} kind={appointment.kind} />
     </button>
   );
 }
@@ -96,7 +96,7 @@ function UnblockBar({ saving, onUnblock }) {
 }
 
 /** One day: status, occupancy, appointments and block/unblock (today and future only). */
-export function DayPanel({ day, appointments, workingHours, isToday, onClose, onOpenAppointment, onChanged }) {
+export function DayPanel({ day, appointments, workingHours, isToday, onClose, onOpenAppointment, onChanged, onNewAppointment, onBlockTime }) {
   const toast = useToast();
   const { handleError } = useAdmin();
   const [reason, setReason] = useState('');
@@ -164,6 +164,17 @@ export function DayPanel({ day, appointments, workingHours, isToday, onClose, on
         ) : null}
 
         {day.isOpen && state !== 'blocked' ? <DayOccupancy day={day} /> : null}
+
+        {editable ? (
+          <div className="grid grid-cols-2 gap-2">
+            <Button size="sm" icon={CalendarPlus} onClick={onNewAppointment}>
+              Agendar aquí
+            </Button>
+            <Button size="sm" variant="secondary" icon={Clock} onClick={onBlockTime}>
+              Ocupar horas
+            </Button>
+          </div>
+        ) : null}
 
         <div>
           <h3 className="mb-1 font-sans text-sm font-semibold text-ink">

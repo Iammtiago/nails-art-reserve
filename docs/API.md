@@ -91,6 +91,12 @@ Configuración completa (incluye servicios inactivos y motivos de días bloquead
 ### `PATCH /api/admin/appointments/:id/complete` · `PATCH /api/admin/appointments/:id/cancel`
 `{ appointment }`. `409` si la cita no está confirmada.
 
+### `POST /api/admin/appointments` (cita manual)
+`{ serviceKey, date, timeSlot, clientName, clientPhone }` → `201 { appointment }` con `qrDataUrl`, `qrText` y `source: 'admin'`. Acepta cualquier hora en tramos de 15 min (también fuera del horario, del rango de reservas y del límite por teléfono). `409 SLOT_TAKEN` si choca, `422 PAST_TIME` si ya pasó.
+
+### `POST /api/admin/time-blocks` (ocupar horario)
+`{ date, start, end, reason? }` → `201 { block }` (`kind: 'block'`). Las clientas no pueden reservar ese rango. No cuenta en Citas ni en sus totales; sí en el calendario (`blockedMinutes`, ítems con `kind`). `409 TIME_TAKEN` si choca. Se libera con `PATCH /api/admin/appointments/:id/cancel`.
+
 ### Cuentas del panel
 Todas las cuentas son `superadmin` (acceso completo). Máximo 5.
 

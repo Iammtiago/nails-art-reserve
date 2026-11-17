@@ -30,7 +30,10 @@ export function useAppointmentActions(onChanged) {
       try {
         const response = await apiPatch(`/api/admin/appointments/${appointment.id}/${action}`);
         const name = firstName(appointment.clientName);
-        toast.success(action === 'complete' ? `Asistencia registrada${name ? ` para ${name}` : ''}.` : 'Cita cancelada. El horario quedó libre.');
+        let message = 'Cita cancelada. El horario quedó libre.';
+        if (action === 'complete') message = `Asistencia registrada${name ? ` para ${name}` : ''}.`;
+        else if (appointment.kind === 'block') message = 'Horario liberado.';
+        toast.success(message);
         onChangedRef.current?.(response?.appointment || null, appointment.id);
         return response?.appointment || null;
       } catch (error) {
@@ -50,6 +53,15 @@ export function useAppointmentActions(onChanged) {
   const cancel = useCallback(
     async (appointment) => {
       if (busyRef.current) return null;
+      if (appointment.kind === 'block') {
+        const free = await confirm({
+          title: '¿Liberar este horario?',
+          message: `${formatDateLong(appointment.date)}, ${formatTime(appointment.timeSlot)} – ${formatTime(appointment.endTime)}. Las clientas podrán reservarlo de nuevo.`,
+          confirmLabel: 'Liberar horario',
+          cancelLabel: 'Volver',
+        });
+        return free ? run(appointment, 'cancel') : null;
+      }
       const accepted = await confirm({
         title: '¿Cancelar esta cita?',
         message: `${appointment.clientName} · ${appointment.serviceName} · ${formatDateLong(appointment.date)}, ${formatTime(appointment.timeSlot)}. El horario quedará libre.`,

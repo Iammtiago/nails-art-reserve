@@ -1,6 +1,6 @@
 'use client';
 
-import { CheckCircle2, CircleX, MessageCircle } from 'lucide-react';
+import { CheckCircle2, CircleX, LockOpen, MessageCircle } from 'lucide-react';
 import { APPOINTMENT_STATUS } from '@shared/constants.js';
 import { formatDateLong, formatDuration, formatTimeRange } from '@shared/format.js';
 import { formatPhone } from '@shared/phone.js';
@@ -11,6 +11,7 @@ import { ATTENDED_CLASSES, CANCEL_CLASSES } from './AppointmentActions';
 import { cancelledByLabel, contactHref, formatInstant } from './appointmentUtils';
 
 function detailRows(appointment, timezone) {
+  if (appointment.kind === 'block') return [];
   const rows = [
     { key: 'phone', label: 'Teléfono', value: formatPhone(appointment.clientPhone), href: `tel:+${appointment.clientPhone}` },
     { key: 'code', label: 'Código', value: appointment.bookingCode, mono: true },
@@ -43,6 +44,15 @@ function DetailRow({ row }) {
 
 function DetailFooter({ appointment, waHref, busyAction, disabled, onComplete, onCancel }) {
   const confirmed = appointment.status === APPOINTMENT_STATUS.CONFIRMED;
+  if (appointment.kind === 'block') {
+    return confirmed ? (
+      <div className="flex justify-end">
+        <Button variant="secondary" icon={LockOpen} loading={busyAction === 'cancel'} disabled={disabled} onClick={() => onCancel(appointment)} className="w-full sm:w-auto">
+          Liberar horario
+        </Button>
+      </div>
+    ) : null;
+  }
   return (
     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
       {confirmed ? (
@@ -75,7 +85,11 @@ export function AppointmentDetailModal({ appointment, onClose, today, timezone, 
       open
       onClose={onClose}
       title={appointment.clientName}
-      description={`${appointment.serviceName} · ${formatDuration(appointment.durationMinutes)}`}
+      description={
+        appointment.kind === 'block'
+          ? `Horario reservado por el salón · ${formatDuration(appointment.durationMinutes)}`
+          : `${appointment.serviceName} · ${formatDuration(appointment.durationMinutes)}`
+      }
       footer={
         <DetailFooter
           appointment={appointment}
@@ -89,7 +103,7 @@ export function AppointmentDetailModal({ appointment, onClose, today, timezone, 
     >
       <div className="rounded-2xl bg-secondary-soft/70 p-4">
         <div className="flex flex-wrap items-center gap-2">
-          <StatusBadge status={appointment.status} />
+          <StatusBadge status={appointment.status} kind={appointment.kind} />
           {isToday ? <Badge tone="accent">Hoy</Badge> : null}
         </div>
         <p className="mt-3 font-display text-2xl font-semibold leading-tight text-ink">{formatTimeRange(appointment.timeSlot, appointment.endTime)}</p>

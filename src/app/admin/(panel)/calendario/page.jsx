@@ -1,6 +1,9 @@
 'use client';
 
+import { CalendarPlus, Lock } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { ManualAppointmentModal, TimeBlockModal } from '@/components/admin/calendar/AgendaModals';
+import { Button } from '@/components/ui/Button';
 import { ApiError, apiGet } from '@/lib/api';
 import { useAsync, useInterval } from '@/lib/hooks';
 import { useAdmin } from '@/components/admin/AdminContext';
@@ -25,10 +28,13 @@ export default function CalendarioPage() {
   const handleErrorRef = useRef(handleError);
   handleErrorRef.current = handleError;
 
-  const [view, setView] = useState('month');
+  // Week first (Tiago, 2026-11-16): it shows the hours, which is what the salon plans with.
+  const [view, setView] = useState('week');
   const [anchor, setAnchor] = useState(null);
   const [openDate, setOpenDate] = useState(null);
   const [selected, setSelected] = useState(null);
+  // { type: 'appointment' | 'block', date } — only one form open at a time, never on top of the day panel.
+  const [form, setForm] = useState(null);
 
   // "Today" comes from the server: settings.now, or /api/settings if the shell has not loaded it.
   const settingsToday = settings?.now?.date || null;
@@ -79,6 +85,11 @@ export default function CalendarioPage() {
     [reload],
   );
   const actions = useAppointmentActions(handleAppointmentChanged);
+
+  const openForm = (type, date) => {
+    setOpenDate(null);
+    setForm({ type, date: date && today && date >= today ? date : today });
+  };
 
   const go = (step) => {
     if (base) setAnchor(shiftAnchor(view, base, step));
@@ -134,9 +145,17 @@ export default function CalendarioPage() {
     <div className="mx-auto w-full max-w-6xl">
       <PageHeader
         title="Calendario"
-        description="Ocupación por día, días libres y disponibilidad."
+        description="Tu semana de un vistazo. Agenda citas a mano u ocupa horarios para ti."
         actions={<CalendarToolbar view={view} onViewChange={setView} onPrev={() => go(-1)} onNext={() => go(1)} onToday={goToday} disabled={!base} />}
       />
+      <div className="-mt-1 mb-4 grid grid-cols-2 gap-2 sm:flex sm:justify-end">
+        <Button icon={CalendarPlus} onClick={() => openForm('appointment')} disabled={!today}>
+          Nueva cita
+        </Button>
+        <Button variant="secondary" icon={Lock} onClick={() => openForm('block')} disabled={!today}>
+          Ocupar horario
+        </Button>
+      </div>
       <CalendarStats stats={stats} view={view} />
       <section aria-labelledby="calendario-periodo" className="glass enter p-2 sm:p-4 lg:p-5" style={{ animationDelay: '160ms' }}>
         <div className="mb-3 flex min-h-[32px] items-center justify-between gap-3 px-1 pt-1 sm:pt-0">
@@ -158,8 +177,18 @@ export default function CalendarioPage() {
           onClose={() => setOpenDate(null)}
           onOpenAppointment={setSelected}
           onChanged={() => reload({ silent: true })}
+          onNewAppointment={() => openForm('appointment', openDay.date)}
+          onBlockTime={() => openForm('block', openDay.date)}
         />
       ) : null}
+
+      <ManualAppointmentModal
+        open={form?.type === 'appointment'}
+        initialDate={form?.date}
+        onClose={() => setForm(null)}
+        onCreated={() => reload({ silent: true })}
+      />
+      <TimeBlockModal open={form?.type === 'block'} initialDate={form?.date} onClose={() => setForm(null)} onCreated={() => reload({ silent: true })} />
 
       {selected ? (
         <AppointmentDetailModal

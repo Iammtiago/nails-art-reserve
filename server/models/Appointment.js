@@ -8,8 +8,20 @@ const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 
 const appointmentSchema = new Schema(
   {
+    // 'booking' = a client's appointment; 'block' = time the salon reserved from the panel
+    // (no client). Both hold their ticks, so the double-booking guard covers them alike.
+    kind: { type: String, enum: ['booking', 'block'], default: 'booking' },
+    // 'online' = booked by the client on the portal; 'admin' = created from the panel.
+    source: { type: String, enum: ['online', 'admin'], default: 'online' },
     clientName: { type: String, required: true, trim: true, maxlength: LIMITS.clientNameMax },
-    clientPhone: { type: String, required: true, match: /^\d{8,15}$/, index: true },
+    clientPhone: {
+      type: String,
+      required() {
+        return this.kind !== 'block';
+      },
+      match: /^\d{8,15}$/,
+      index: true,
+    },
     serviceKey: { type: String, required: true },
     serviceName: { type: String, required: true },
     durationMinutes: { type: Number, required: true, min: 15 },
@@ -21,7 +33,12 @@ const appointmentSchema = new Schema(
     occupiedTicks: { type: [String], required: true },
     holdsSlot: { type: Boolean, default: true },
     bookingCode: { type: String, required: true, unique: true, match: BOOKING_CODE_REGEX },
-    qrDataUrl: { type: String, required: true },
+    qrDataUrl: {
+      type: String,
+      required() {
+        return this.kind !== 'block';
+      },
+    },
     status: { type: String, enum: APPOINTMENT_STATUSES, default: APPOINTMENT_STATUS.CONFIRMED },
     cancelledAt: { type: Date },
     cancelledBy: { type: String, enum: ['client', 'admin'] },

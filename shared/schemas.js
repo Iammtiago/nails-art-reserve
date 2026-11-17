@@ -178,6 +178,25 @@ export const blockDateSchema = z.strictObject({
 
 export const dateParamSchema = z.object({ date: dateString });
 
+/** Appointment created from the panel: any start on a 15-minute tick, even outside opening hours. */
+export const adminAppointmentSchema = z.strictObject({
+  serviceKey: slug,
+  date: dateString,
+  timeSlot: tickTime,
+  clientName: clientNameField,
+  clientPhone: phoneField,
+});
+
+/** Time the salon keeps for itself on one day (lunch, a personal errand, a private client…). */
+export const timeBlockSchema = z
+  .strictObject({
+    date: dateString,
+    start: tickTime,
+    end: tickTime,
+    reason: z.string().trim().max(LIMITS.blockReasonMax, 'Motivo demasiado largo.').optional().default(''),
+  })
+  .refine((v) => toMinutes(v.end) > toMinutes(v.start), { message: 'La hora final debe ser después de la inicial.', path: ['end'] });
+
 // ---------- settings ----------
 
 export const workingDaySchema = z

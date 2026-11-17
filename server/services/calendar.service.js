@@ -11,7 +11,7 @@ export async function getCalendar({ from, to }) {
   const now = businessNow(settings);
   const appointments = await Appointment.find(
     { date: { $gte: from, $lte: to }, status: { $ne: APPOINTMENT_STATUS.CANCELLED } },
-    { clientName: 1, clientPhone: 1, serviceName: 1, durationMinutes: 1, date: 1, timeSlot: 1, endTime: 1, status: 1, bookingCode: 1 },
+    { kind: 1, source: 1, clientName: 1, clientPhone: 1, serviceName: 1, durationMinutes: 1, date: 1, timeSlot: 1, endTime: 1, status: 1, bookingCode: 1 },
   )
     .sort({ date: 1, timeSlot: 1 })
     .lean();
@@ -29,6 +29,7 @@ export async function getCalendar({ from, to }) {
     const list = byDate.get(date) || [];
     const capacityMinutes = dayCapacityMinutes(day);
     const bookedMinutes = list.reduce((sum, a) => sum + a.durationMinutes, 0);
+    const bookings = list.filter((a) => a.kind !== 'block');
     days.push({
       date,
       dayOfWeek: dayOfWeek(date),
@@ -39,8 +40,10 @@ export async function getCalendar({ from, to }) {
       isToday: date === now.date,
       capacityMinutes,
       bookedMinutes,
-      appointmentsCount: list.length,
-      pendingCount: list.filter((a) => a.status === APPOINTMENT_STATUS.CONFIRMED).length,
+      // Time blocks count as occupied minutes, not as appointments.
+      appointmentsCount: bookings.length,
+      pendingCount: bookings.filter((a) => a.status === APPOINTMENT_STATUS.CONFIRMED).length,
+      blockedMinutes: list.filter((a) => a.kind === 'block').reduce((sum, a) => sum + a.durationMinutes, 0),
       occupancy: capacityMinutes ? Math.min(1, Math.round((bookedMinutes / capacityMinutes) * 100) / 100) : 0,
     });
   }
@@ -53,6 +56,8 @@ export async function getCalendar({ from, to }) {
     days,
     appointments: appointments.map((a) => ({
       id: String(a._id),
+      kind: a.kind || 'booking',
+      source: a.source || 'online',
       clientName: a.clientName,
       clientPhone: a.clientPhone,
       serviceName: a.serviceName,
@@ -71,7 +76,7 @@ export async function addBlockedDate({ date, reason }) {
   const now = businessNow(settings);
   if (date < now.date) throw unprocessable('No se puede bloquear un día que ya pasó.', 'PAST_DATE');
   const updated = await blockDate({ date, reason });
-  const affected = await Appointment.countDocuments({ date, status: APPOINTMENT_STATUS.CONFIRMED });
+  const affected = await Appointment.countDocuments({ date, status: APPOINTMENT_STATUS.CONFIRMED, kind: { $ne: 'block' } });
   return { blockedDates: updated.blockedDates, affectedAppointments: affected };
 }
 

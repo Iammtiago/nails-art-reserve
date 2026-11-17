@@ -48,6 +48,8 @@ export function serializeForPhoneLookup(a) {
 export function serializeForAdmin(a) {
   return {
     id: String(a._id),
+    kind: a.kind || 'booking',
+    source: a.source || 'online',
     clientName: a.clientName,
     clientPhone: a.clientPhone,
     serviceKey: a.serviceKey,
@@ -66,6 +68,7 @@ export function serializeForAdmin(a) {
 }
 
 const ADMIN_PROJECTION = { qrDataUrl: 0, occupiedTicks: 0, __v: 0 };
+const NOT_BLOCK = { kind: { $ne: 'block' } };
 
 function escapeRegex(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -120,6 +123,8 @@ export async function createAppointment(input, { baseUrl }) {
 
   const start = toMinutes(input.timeSlot);
   const base = {
+    kind: 'booking',
+    source: 'online',
     clientName: input.clientName,
     clientPhone: input.clientPhone,
     serviceKey: service.key,
@@ -133,29 +138,130 @@ export async function createAppointment(input, { baseUrl }) {
     status: APPOINTMENT_STATUS.CONFIRMED,
   };
 
+  return insertBooking(base, { baseUrl });
+}
+
+/**
+ * Inserts with a fresh unique code (retrying on code collisions). The unique tick index turns
+ * an overlap into `takenError`. Bookings also get their QR and update the client directory.
+ */
+async function insertWithCode(doc, { baseUrl, takenError }) {
+  const isBlock = doc.kind === 'block';
   let created = null;
   for (let attempt = 0; attempt < MAX_CODE_ATTEMPTS && !created; attempt += 1) {
     const bookingCode = generateBookingCode();
-    const qrDataUrl = await generateQrDataUrl(verificationUrl(baseUrl, bookingCode));
+    const qrDataUrl = isBlock ? undefined : await generateQrDataUrl(verificationUrl(baseUrl, bookingCode));
     try {
-      created = await Appointment.create({ ...base, bookingCode, qrDataUrl });
+      created = await Appointment.create({ ...doc, bookingCode, qrDataUrl });
     } catch (error) {
       if (isDuplicateKey(error, 'bookingCode')) continue;
-      if (isDuplicateKey(error)) throw conflict('Ese horario se acaba de ocupar. Elige otro, por favor.', 'SLOT_TAKEN');
+      if (isDuplicateKey(error)) throw takenError;
       throw error;
     }
   }
-  if (!created) throw new AppError(503, 'No pudimos generar tu código. Intenta de nuevo.', { code: 'CODE_EXHAUSTED' });
+  if (!created) throw new AppError(503, 'No pudimos generar el código. Intenta de nuevo.', { code: 'CODE_EXHAUSTED' });
+  return created.toObject();
+}
 
+async function insertBooking(base, { baseUrl }) {
+  const created = await insertWithCode(base, {
+    baseUrl,
+    takenError: conflict('Ese horario se acaba de ocupar. Elige otro, por favor.', 'SLOT_TAKEN'),
+  });
   try {
-    await recordBooking({ phone: input.clientPhone, name: input.clientName, date: input.date });
+    await recordBooking({ phone: base.clientPhone, name: base.clientName, date: base.date });
   } catch (error) {
     // The appointment is already safe; the directory can be repaired on the next booking.
     console.error('[appointments] could not update client directory', error);
   }
-
   // qrText lets the browser redraw the exact same QR on the downloadable ticket image.
-  return { ...serializeTicket(created.toObject()), qrText: verificationUrl(baseUrl, created.bookingCode) };
+  return { ...serializeTicket(created), qrText: verificationUrl(baseUrl, created.bookingCode) };
+}
+
+/** A start in the business «now» or later: the panel can book any time, but not in the past. */
+function assertNotPast(date, startMinutes, now) {
+  if (date < now.date || (date === now.date && startMinutes < now.minutes)) {
+    throw unprocessable('Esa hora ya pasó. Elige una hora futura.', 'PAST_TIME');
+  }
+}
+
+/** Ticks of [start, start + duration) already taken that day, as readable ranges for the error. */
+function overlapMessage(occupied, ticks, what) {
+  const clash = ticks.filter((t) => occupied.has(t));
+  if (!clash.length) return null;
+  return `${what} choca con otra cita u horario ocupado desde las ${clash[0]}. Elige otra hora.`;
+}
+
+/**
+ * Appointment created from the panel (phone, WhatsApp or walk-in). Unlike the portal it ignores
+ * opening hours, booking window, minimum lead time and the per-phone limit; it still refuses the
+ * past and any overlap.
+ */
+export async function createAdminAppointment(input, { baseUrl }) {
+  const settings = await getSettingsDoc();
+  const service = findActiveService(settings, input.serviceKey);
+  const now = businessNow(settings);
+  const start = toMinutes(input.timeSlot);
+  const end = start + service.durationMinutes;
+  if (end > 24 * 60) throw unprocessable('El servicio no cabe en ese día. Elige una hora más temprano.', 'INVALID_TIME');
+  assertNotPast(input.date, start, now);
+
+  const ticks = ticksFor(start, service.durationMinutes);
+  const clash = overlapMessage(await occupiedTicksOn(input.date), ticks, 'Esa cita');
+  if (clash) throw conflict(clash, 'SLOT_TAKEN');
+
+  return insertBooking(
+    {
+      kind: 'booking',
+      source: 'admin',
+      clientName: input.clientName,
+      clientPhone: input.clientPhone,
+      serviceKey: service.key,
+      serviceName: service.name,
+      durationMinutes: service.durationMinutes,
+      date: input.date,
+      timeSlot: input.timeSlot,
+      endTime: toTime(end),
+      occupiedTicks: ticks,
+      holdsSlot: true,
+      status: APPOINTMENT_STATUS.CONFIRMED,
+    },
+    { baseUrl },
+  );
+}
+
+export const TIME_BLOCK_LABEL = 'Horario ocupado';
+
+/** Reserves a time range for the salon itself; clients will not see it as free. */
+export async function createTimeBlock({ date, start, end, reason }) {
+  const settings = await getSettingsDoc();
+  const now = businessNow(settings);
+  const startMinutes = toMinutes(start);
+  const duration = toMinutes(end) - startMinutes;
+  if (date < now.date) throw unprocessable('No se puede ocupar un día que ya pasó.', 'PAST_DATE');
+
+  const ticks = ticksFor(startMinutes, duration);
+  const clash = overlapMessage(await occupiedTicksOn(date), ticks, 'Ese rango');
+  if (clash) throw conflict(clash, 'TIME_TAKEN');
+
+  const created = await insertWithCode(
+    {
+      kind: 'block',
+      source: 'admin',
+      clientName: reason || TIME_BLOCK_LABEL,
+      serviceKey: 'bloqueo',
+      serviceName: TIME_BLOCK_LABEL,
+      durationMinutes: duration,
+      date,
+      timeSlot: start,
+      endTime: end,
+      occupiedTicks: ticks,
+      holdsSlot: true,
+      status: APPOINTMENT_STATUS.CONFIRMED,
+    },
+    { takenError: conflict('Ese rango se acaba de ocupar. Elige otro.', 'TIME_TAKEN') },
+  );
+  return serializeForAdmin(created);
 }
 
 /** Active, still-cancellable appointments for a phone. */
@@ -221,7 +327,7 @@ export async function cancelByAdmin(id) {
 
 export async function completeAppointment(id) {
   const updated = await Appointment.findOneAndUpdate(
-    { _id: id, status: APPOINTMENT_STATUS.CONFIRMED },
+    { _id: id, status: APPOINTMENT_STATUS.CONFIRMED, kind: { $ne: 'block' } },
     { $set: { status: APPOINTMENT_STATUS.COMPLETED, completedAt: new Date() } },
     { returnDocument: 'after', lean: true, projection: ADMIN_PROJECTION },
   );
@@ -243,7 +349,7 @@ export async function completeAppointment(id) {
 export async function verifyCode(code, { markAttended = false } = {}) {
   const settings = await getSettingsDoc();
   const now = businessNow(settings);
-  const found = await Appointment.findOne({ bookingCode: code }, ADMIN_PROJECTION).lean();
+  const found = await Appointment.findOne({ bookingCode: code, kind: { $ne: 'block' } }, ADMIN_PROJECTION).lean();
   if (!found) throw notFound('No encontramos ninguna cita con ese código.', 'CODE_NOT_FOUND');
 
   let appointment = serializeForAdmin(found);
@@ -265,7 +371,8 @@ export async function verifyCode(code, { markAttended = false } = {}) {
 export async function listAppointments({ view, date, q, page, limit }) {
   const settings = await getSettingsDoc();
   const now = businessNow(settings);
-  const filter = {};
+  // Time blocks live in the calendar, not in the Citas list or its counters.
+  const filter = { kind: { $ne: 'block' } };
   let sort = { date: 1, timeSlot: 1 };
 
   switch (view) {
@@ -305,10 +412,10 @@ export async function listAppointments({ view, date, q, page, limit }) {
       .limit(limit)
       .lean(),
     Appointment.countDocuments(filter),
-    Appointment.countDocuments({ date: now.date, status: { $ne: APPOINTMENT_STATUS.CANCELLED } }),
-    Appointment.countDocuments({ status: APPOINTMENT_STATUS.CONFIRMED, date: { $gte: now.date } }),
-    Appointment.countDocuments({ status: APPOINTMENT_STATUS.COMPLETED }),
-    Appointment.countDocuments({ status: APPOINTMENT_STATUS.CANCELLED }),
+    Appointment.countDocuments({ ...NOT_BLOCK, date: now.date, status: { $ne: APPOINTMENT_STATUS.CANCELLED } }),
+    Appointment.countDocuments({ ...NOT_BLOCK, status: APPOINTMENT_STATUS.CONFIRMED, date: { $gte: now.date } }),
+    Appointment.countDocuments({ ...NOT_BLOCK, status: APPOINTMENT_STATUS.COMPLETED }),
+    Appointment.countDocuments({ ...NOT_BLOCK, status: APPOINTMENT_STATUS.CANCELLED }),
   ]);
 
   return {

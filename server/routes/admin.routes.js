@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   accountSchema,
+  adminAppointmentSchema,
   adminAppointmentsQuerySchema,
   adminClientsQuerySchema,
   blockDateSchema,
@@ -8,11 +9,17 @@ import {
   changePasswordSchema,
   dateParamSchema,
   idParamSchema,
+  timeBlockSchema,
 } from '../../shared/schemas.js';
 import { validate } from '../middleware/index.js';
 import { changePassword, createAccount, deleteAccount, listAccounts } from '../services/account.service.js';
 import { issueSession } from '../services/auth.service.js';
-import { cancelByAdmin, completeAppointment, listAppointments } from '../services/appointment.service.js';
+import { env } from '../config/env.js';
+import { cancelByAdmin, completeAppointment, createAdminAppointment, createTimeBlock, listAppointments } from '../services/appointment.service.js';
+
+function publicBaseUrl(req) {
+  return env().appUrl || `${req.protocol}://${req.get('host')}`;
+}
 import { addBlockedDate, getCalendar, removeBlockedDate } from '../services/calendar.service.js';
 import { listClients } from '../services/client.service.js';
 import { getSettingsDoc, toAdminSettings } from '../services/settings.service.js';
@@ -26,6 +33,17 @@ adminRouter.get('/settings', async (_req, res) => {
 
 adminRouter.get('/appointments', validate(adminAppointmentsQuerySchema, 'query'), async (req, res) => {
   res.json(await listAppointments(req.valid.query));
+});
+
+// POST /api/admin/appointments — manual appointment (phone, WhatsApp, walk-in).
+adminRouter.post('/appointments', validate(adminAppointmentSchema), async (req, res) => {
+  res.status(201).json({ appointment: await createAdminAppointment(req.valid.body, { baseUrl: publicBaseUrl(req) }) });
+});
+
+// POST /api/admin/time-blocks — reserve a time range for the salon. Release it with
+// PATCH /api/admin/appointments/:id/cancel.
+adminRouter.post('/time-blocks', validate(timeBlockSchema), async (req, res) => {
+  res.status(201).json({ block: await createTimeBlock(req.valid.body) });
 });
 
 adminRouter.patch('/appointments/:id/complete', validate(idParamSchema, 'params'), async (req, res) => {

@@ -16,7 +16,8 @@ async function startLocalMemoryServer() {
     // LOCAL_DB_DIR lets a second local dev server use its own files (one process per folder).
     const dbPath = process.env.LOCAL_DB_DIR ? path.resolve(process.env.LOCAL_DB_DIR) : path.join(process.cwd(), '.data', 'mongo');
     mkdirSync(dbPath, { recursive: true });
-    cache.memory = await MongoMemoryServer.create({ instance: { dbPath, storageEngine: 'wiredTiger' } });
+    // OneDrive makes the first start slow (over the 10 s default).
+    cache.memory = await MongoMemoryServer.create({ instance: { dbPath, storageEngine: 'wiredTiger', launchTimeout: 60_000 } });
     console.info(`[db] MongoDB local en memoria (datos en ${dbPath}).`);
   }
   return cache.memory.getUri('nails-art');

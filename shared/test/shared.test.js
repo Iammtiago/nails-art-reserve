@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { DEFAULT_SETTINGS, BOOKING_CODE_ALPHABET } from '../constants.js';
-import { addDays, dayOfWeek, diffDays, nowInTimezone, startOfWeek } from '../time.js';
+import { addDays, dayOfWeek, diffDays, nowInTimezone, parseTypedTime, startOfWeek } from '../time.js';
 import { candidateStarts, checkSlot, computeAvailability, daySegments, ticksFor } from '../schedule.js';
 import { formatPhone, normalizePhone } from '../phone.js';
 import { buildThemeTokens, contrastRatio, paletteReport } from '../color.js';
@@ -59,6 +59,22 @@ describe('schedule', () => {
     assert.equal(byTime['14:00'], true);
   });
 
+  it('with 30-minute starts, a 1-hour booking takes out the starts it overlaps', () => {
+    const half = structuredClone(settings);
+    half.workingHours[6].slotDurationMinutes = 30;
+    const now = { date: '2026-11-16', minutes: 600 };
+    const occupied = new Set(ticksFor(570, 60)); // 9:30-10:30 taken
+    const result = computeAvailability({ settings: half, date: SATURDAY, durationMinutes: 60, occupied, now });
+    const byTime = Object.fromEntries(result.slots.map((s) => [s.time, s.available]));
+    assert.equal(byTime['08:30'], true);
+    assert.equal(byTime['09:00'], false); // 9:00-10:00 overlaps
+    assert.equal(byTime['09:30'], false);
+    assert.equal(byTime['10:00'], false);
+    assert.equal(byTime['10:30'], true);
+    assert.equal(byTime['11:30'], true); // last start that ends at the break (12:30)
+    assert.equal(byTime['12:00'], undefined);
+  });
+
   it('hides past starts and respects the minimum lead time today', () => {
     const now = { date: SATURDAY, minutes: 9 * 60 + 45 }; // 9:45
     const result = computeAvailability({ settings, date: SATURDAY, durationMinutes: 60, occupied: new Set(), now });
@@ -91,6 +107,20 @@ describe('schedule', () => {
     assert.equal(checkSlot({ ...base, time: '08:30' }).reason, 'taken');
     assert.equal(checkSlot({ ...base, time: '08:45' }).reason, 'invalid_time');
     assert.equal(checkSlot({ ...base, time: '09:30' }).ok, true);
+  });
+});
+
+describe('typed time', () => {
+  it('reads hours typed by hand', () => {
+    assert.equal(parseTypedTime('5:30', 'pm'), '17:30');
+    assert.equal(parseTypedTime('6:45', 'pm'), '18:45');
+    assert.equal(parseTypedTime('9.15', 'am'), '09:15');
+    assert.equal(parseTypedTime('530', 'pm'), '17:30');
+    assert.equal(parseTypedTime('17:30', 'am'), '17:30');
+    assert.equal(parseTypedTime('5:30 am', 'pm'), '05:30');
+    assert.equal(parseTypedTime('12:00', 'pm'), '12:00');
+    assert.equal(parseTypedTime('12:00', 'am'), '00:00');
+    for (const bad of ['', '5:3', '25:00', '13:00 pm', 'hola']) assert.equal(parseTypedTime(bad, 'pm'), null);
   });
 });
 

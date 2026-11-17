@@ -251,7 +251,7 @@ function validateDay(day, index, add) {
   if (!isValidTime(day.closeTime)) add(`${base}.closeTime`, 'Indica la hora de cierre.');
   else if (!closeOk) add(`${base}.closeTime`, TICK_MESSAGE);
   if (!SLOT_DURATION_OPTIONS.includes(Number(day.slotDurationMinutes)))
-    add(`${base}.slotDurationMinutes`, 'Elige la duración del bloque.');
+    add(`${base}.slotDurationMinutes`, 'Elige cada cuánto empiezan las citas.');
   if (!openOk || !closeOk) return;
 
   const open = toMinutes(day.openTime);

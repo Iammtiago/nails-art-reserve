@@ -16,7 +16,16 @@ export function Badge({ tone = 'neutral', className = '', children }) {
 
 const STATUS_TONES = { confirmed: 'brand', completed: 'success', cancelled: 'danger' };
 
-export function StatusBadge({ status }) {
+/** Status of an appointment; time blocks (kind="block") read «Ocupado» instead. */
+export function StatusBadge({ status, kind }) {
+  if (kind === 'block' && status !== 'cancelled') {
+    return (
+      <Badge tone="warning">
+        <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />
+        Ocupado
+      </Badge>
+    );
+  }
   return (
     <Badge tone={STATUS_TONES[status] || 'neutral'}>
       <span className="h-1.5 w-1.5 rounded-full bg-current" aria-hidden="true" />

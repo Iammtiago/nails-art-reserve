@@ -5,11 +5,11 @@ import { Button, IconButton } from '@/components/ui/Button';
 import { Segmented } from '@/components/ui/Controls';
 
 const VIEW_OPTIONS = [
-  { value: 'month', label: 'Mes' },
   { value: 'week', label: 'Semana' },
+  { value: 'month', label: 'Mes' },
 ];
 
-/** Mes | Semana, previous / today / next. */
+/** Semana | Mes, previous / today / next. */
 export function CalendarToolbar({ view, onViewChange, onPrev, onNext, onToday, disabled = false }) {
   return (
     <div className="flex flex-wrap items-center gap-2">

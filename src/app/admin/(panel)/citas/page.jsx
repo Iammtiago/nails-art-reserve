@@ -1,6 +1,9 @@
 'use client';
 
+import { CalendarPlus } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { ManualAppointmentModal } from '@/components/admin/calendar/AgendaModals';
+import { Button } from '@/components/ui/Button';
 import { formatDateLong } from '@shared/format.js';
 import { isValidDate } from '@shared/time.js';
 import { ApiError, apiGet } from '@/lib/api';
@@ -27,6 +30,7 @@ export default function CitasPage() {
   const [search, setSearch] = useState('');
   const [date, setDate] = useState('');
   const [selected, setSelected] = useState(null);
+  const [creating, setCreating] = useState(false);
   const listTopRef = useRef(null);
 
   const q = useDebouncedValue(search.trim(), 300);
@@ -122,7 +126,13 @@ export default function CitasPage() {
         eyebrow={today ? formatDateLong(today) : undefined}
         title="Citas"
         description="Agenda del salón: confirma asistencias, cancela o escribe a tus clientas."
+        actions={
+          <Button icon={CalendarPlus} onClick={() => setCreating(true)} disabled={!today}>
+            Nueva cita
+          </Button>
+        }
       />
+      <ManualAppointmentModal open={creating} initialDate={today} onClose={() => setCreating(false)} onCreated={() => reload({ silent: true })} />
       <AppointmentStats summary={data?.summary} />
       <AppointmentFilters
         view={view}

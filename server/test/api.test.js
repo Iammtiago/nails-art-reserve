@@ -193,6 +193,63 @@ describe('admin', () => {
     assert.equal(session.body.admin.username, 'tiago');
   });
 
+  it('books manually from the panel, outside opening hours, but never overlapping', async () => {
+    const agent = await loginAgent();
+    assert.equal((await request(app).post('/api/admin/appointments').set(CSRF).send({})).status, 401);
+
+    // 19:30 is after closing time: allowed from the panel.
+    const late = await agent
+      .post('/api/admin/appointments')
+      .set(CSRF)
+      .send({ serviceKey: 'manicura', date: SATURDAY, timeSlot: '19:30', clientName: 'Rosa Díaz', clientPhone: '0412 555 1234' });
+    assert.equal(late.status, 201, JSON.stringify(late.body));
+    assert.equal(late.body.appointment.endTime, '20:30');
+    assert.ok(late.body.appointment.qrDataUrl.startsWith('data:image/png'));
+    assert.ok(late.body.appointment.qrText.endsWith(`codigo=${late.body.appointment.bookingCode}`));
+
+    const overlap = await agent
+      .post('/api/admin/appointments')
+      .set(CSRF)
+      .send({ serviceKey: 'pedicura', date: SATURDAY, timeSlot: '20:00', clientName: 'Otra Clienta', clientPhone: '0412 555 9999' });
+    assert.equal(overlap.status, 409);
+
+    const past = await agent
+      .post('/api/admin/appointments')
+      .set(CSRF)
+      .send({ serviceKey: 'manicura', date: TODAY, timeSlot: '08:30', clientName: 'Tarde Ya', clientPhone: '0412 555 0000' });
+    assert.equal(past.status, 422);
+
+    const list = await agent.get('/api/admin/appointments?view=upcoming');
+    assert.equal(list.body.items[0].source, 'admin');
+  });
+
+  it('reserves a time range that clients can no longer book, and releases it', async () => {
+    const agent = await loginAgent();
+    const block = await agent.post('/api/admin/time-blocks').set(CSRF).send({ date: SATURDAY, start: '10:30', end: '12:30', reason: 'Diligencia' });
+    assert.equal(block.status, 201, JSON.stringify(block.body));
+    assert.equal(block.body.block.kind, 'block');
+
+    const avail = await request(app).get(`/api/appointments/availability?date=${SATURDAY}&service=manicura`);
+    const taken = avail.body.slots.filter((s) => !s.available).map((s) => s.time);
+    assert.deepEqual(taken, ['10:30', '11:30']);
+    assert.equal((await book(booking({ timeSlot: '10:30' }))).status, 409);
+
+    const clash = await agent.post('/api/admin/time-blocks').set(CSRF).send({ date: SATURDAY, start: '11:00', end: '11:30' });
+    assert.equal(clash.status, 409);
+    assert.equal((await agent.post('/api/admin/time-blocks').set(CSRF).send({ date: SATURDAY, start: '12:00', end: '11:00' })).status, 422);
+
+    // Blocks stay out of the Citas list and counters, but show in the calendar.
+    const list = await agent.get('/api/admin/appointments?view=upcoming');
+    assert.equal(list.body.total, 0);
+    const cal = await agent.get(`/api/admin/calendar?from=${SATURDAY}&to=${SATURDAY}`);
+    assert.equal(cal.body.days[0].appointmentsCount, 0);
+    assert.equal(cal.body.days[0].blockedMinutes, 120);
+    assert.equal(cal.body.appointments[0].kind, 'block');
+
+    assert.equal((await agent.patch(`/api/admin/appointments/${block.body.block.id}/cancel`).set(CSRF)).status, 200);
+    assert.equal((await book(booking({ timeSlot: '10:30' }))).status, 201);
+  });
+
   it('accepts 6-character passwords for new accounts', async () => {
     const agent = await loginAgent();
     const short = await agent.post('/api/admin/accounts').set(CSRF).send({ username: 'corta', password: '12345', passwordConfirm: '12345' });

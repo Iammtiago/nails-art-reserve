@@ -17,7 +17,7 @@ function AgendaAppointment({ appointment, onOpen }) {
     >
       <span className="flex w-full items-center justify-between gap-2">
         <span className="text-sm font-semibold text-ink">{formatTimeRange(appointment.timeSlot, appointment.endTime)}</span>
-        <StatusBadge status={appointment.status} />
+        <StatusBadge status={appointment.status} kind={appointment.kind} />
       </span>
       <span className="block w-full truncate text-sm text-ink-2">
         <span className="font-semibold text-ink">{appointment.clientName}</span> · {appointment.serviceName}

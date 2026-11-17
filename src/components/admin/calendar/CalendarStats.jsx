@@ -45,7 +45,7 @@ export function CalendarStats({ stats, view }) {
     <div className="mb-4 grid grid-cols-2 gap-3 lg:grid-cols-4">
       {items.map((item, index) => (
         <div key={item.key} className="enter min-w-0 [&>*]:h-full" style={{ animationDelay: `${index * 50}ms` }}>
-          <Stat label={item.label} value={item.value} hint={item.hint} icon={item.icon} tone={item.tone} />
+          <Stat label={item.label} value={item.value} hint={item.hint} icon={item.icon} tone={item.tone} featured={index === 0} />
         </div>
       ))}
     </div>

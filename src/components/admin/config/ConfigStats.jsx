@@ -54,7 +54,7 @@ export function ConfigStats({ draft, previewColors }) {
     <div className="mb-5 grid grid-cols-2 gap-3 lg:grid-cols-4">
       {stats.map((stat, index) => (
         <div key={stat.label} className="enter" style={{ animationDelay: `${index * 50}ms` }}>
-          <Stat label={stat.label} value={stat.value} hint={stat.hint} icon={stat.icon} tone={stat.tone} />
+          <Stat label={stat.label} value={stat.value} hint={stat.hint} icon={stat.icon} tone={stat.tone} featured={index === 0} />
         </div>
       ))}
     </div>

@@ -316,6 +316,19 @@ describe('admin', () => {
       .send({ currentPassword: 'otra-clave-tiago', password: 'una-clave-muy-larga', passwordConfirm: 'una-clave-muy-larga' });
   });
 
+  it('returns the ticket with its QR so the panel can download it again', async () => {
+    const agent = await loginAgent();
+    const { appointment } = (await book(booking())).body;
+    assert.equal((await request(app).get(`/api/admin/appointments/${appointment.id}/ticket`)).status, 401);
+    const res = await agent.get(`/api/admin/appointments/${appointment.id}/ticket`);
+    assert.equal(res.status, 200);
+    assert.equal(res.body.ticket.bookingCode, appointment.bookingCode);
+    assert.ok(res.body.ticket.qrDataUrl.startsWith('data:image/png;base64,'));
+    assert.equal(res.body.ticket.qrText, `https://nails-art.test/admin/escanear?codigo=${appointment.bookingCode}`);
+    const block = await agent.post('/api/admin/time-blocks').set(CSRF).send({ date: SATURDAY, start: '15:00', end: '16:00', reason: '' });
+    assert.equal((await agent.get(`/api/admin/appointments/${block.body.block.id}/ticket`)).status, 404);
+  });
+
   it('hidden superadmin mode: 403 without it, bad key rejected, right key deletes and audits', async () => {
     const agent = await loginAgent();
     const created = await book(booking());

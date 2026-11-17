@@ -8,6 +8,7 @@ import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
 import { SuperDeleteButton } from '@/components/admin/SuperMode';
+import { AppointmentTicket } from '@/components/admin/TicketDownload';
 import { ATTENDED_CLASSES, CANCEL_CLASSES } from './AppointmentActions';
 import { cancelledByLabel, contactHref, formatInstant } from './appointmentUtils';
 
@@ -121,6 +122,7 @@ export function AppointmentDetailModal({ appointment, onClose, today, timezone, 
           <DetailRow key={row.key} row={row} />
         ))}
       </dl>
+      {appointment.kind !== 'block' && appointment.status !== APPOINTMENT_STATUS.CANCELLED ? <AppointmentTicket appointmentId={appointment.id} /> : null}
     </Modal>
   );
 }

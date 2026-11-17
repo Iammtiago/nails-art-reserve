@@ -428,3 +428,15 @@ export async function listAppointments({ view, date, q, page, limit }) {
     now,
   };
 }
+
+/**
+ * The full ticket (QR included) of one booking, so the panel can download it again.
+ * Old documents without a stored QR get it generated on the fly.
+ */
+export async function getAdminTicket(id, { baseUrl }) {
+  const appointment = await Appointment.findOne({ _id: id, ...NOT_BLOCK }).lean();
+  if (!appointment) throw notFound('Esa cita no existe.');
+  const qrText = verificationUrl(baseUrl, appointment.bookingCode);
+  const qrDataUrl = appointment.qrDataUrl || (await generateQrDataUrl(qrText));
+  return { ...serializeTicket({ ...appointment, qrDataUrl }), qrText };
+}

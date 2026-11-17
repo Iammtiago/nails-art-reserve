@@ -3,8 +3,7 @@
 // «Nueva cita» (manual booking from the panel) and «Ocupar horario» (time the salon keeps).
 // Both read the day's occupation to suggest free times; the server re-checks everything.
 
-/* eslint-disable @next/next/no-img-element */
-import { CalendarPlus, Download, Lock, RotateCw } from 'lucide-react';
+import { CalendarPlus, Lock } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { LIMITS, TICK_MINUTES } from '@shared/constants.js';
 import { formatDateLong, formatDuration, formatTime } from '@shared/format.js';
@@ -13,7 +12,7 @@ import { adminAppointmentSchema, fieldErrorsFor, timeBlockSchema } from '@shared
 import { toMinutes, toTime } from '@shared/time.js';
 import { ApiError, apiGet, apiPost } from '@/lib/api';
 import { useAsync } from '@/lib/hooks';
-import { createTicketBlob, saveTicketImage } from '@/lib/ticket-image';
+import { TicketDownloadButton, TicketQr } from '@/components/admin/TicketDownload';
 import { useAdmin } from '@/components/admin/AdminContext';
 import { Button } from '@/components/ui/Button';
 import { Field, Input, Select } from '@/components/ui/Field';
@@ -165,44 +164,6 @@ function ManualForm({ initialDate, onDone, onCancel }) {
 }
 
 function ManualDone({ appointment, onClose }) {
-  const { settings } = useAdmin();
-  const toast = useToast();
-  const [image, setImage] = useState({ status: 'preparing', blob: null });
-  const [attempt, setAttempt] = useState(0);
-  const [saving, setSaving] = useState(false);
-  const businessName = settings?.businessName || 'Nails Art';
-  const logoUrl = settings?.logoUrl;
-  const instagramUrl = settings?.instagramUrl;
-
-  // Same ticket image the client gets; pre-generated so the click can share it (iOS needs the gesture).
-  useEffect(() => {
-    let alive = true;
-    setImage({ status: 'preparing', blob: null });
-    createTicketBlob({ appointment, businessName, logoUrl, instagramUrl })
-      .then((blob) => alive && setImage({ status: 'ready', blob }))
-      .catch(() => alive && setImage({ status: 'error', blob: null }));
-    return () => {
-      alive = false;
-    };
-  }, [appointment, businessName, logoUrl, instagramUrl, attempt]);
-
-  function download() {
-    if (image.status === 'error') {
-      setAttempt((n) => n + 1);
-      return;
-    }
-    if (image.status !== 'ready' || saving) return;
-    setSaving(true);
-    saveTicketImage(image.blob, appointment.bookingCode)
-      .then((result) => {
-        if (result === 'downloaded') toast.success('Ticket descargado. Envíaselo a la clienta.');
-      })
-      .catch(() => toast.error('No se pudo guardar la imagen. Intenta de nuevo.'))
-      .finally(() => setSaving(false));
-  }
-
-  const label = image.status === 'error' ? 'Reintentar imagen' : image.status === 'preparing' ? 'Preparando ticket…' : 'Descargar ticket';
-
   return (
     <div className="space-y-4 text-center">
       <div>
@@ -213,21 +174,12 @@ function ManualDone({ appointment, onClose }) {
       </div>
       {appointment.qrDataUrl ? (
         <div className="flex justify-center">
-          <img
-            src={appointment.qrDataUrl}
-            alt={`Código QR de la cita ${appointment.bookingCode}`}
-            width={200}
-            height={200}
-            className="h-[200px] w-[200px] rounded-2xl bg-white p-2 shadow-glass"
-            decoding="async"
-          />
+          <TicketQr ticket={appointment} />
         </div>
       ) : null}
       <p className="code-text rounded-2xl bg-secondary py-3 text-2xl font-bold text-secondary-on">{appointment.bookingCode}</p>
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-        <Button icon={image.status === 'error' ? RotateCw : Download} onClick={download} loading={saving} disabled={image.status === 'preparing'}>
-          {label}
-        </Button>
+        <TicketDownloadButton ticket={appointment} />
         <Button variant="ghost" onClick={onClose}>
           Listo
         </Button>

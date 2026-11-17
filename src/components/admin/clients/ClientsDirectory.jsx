@@ -114,8 +114,8 @@ export function ClientsDirectory() {
   } else {
     body = (
       <div aria-busy={pending || undefined} className={`transition-opacity duration-200 ${pending ? 'opacity-60' : ''}`}>
-        <ClientsTable items={data.items} businessName={businessName} onCopy={copyPhone} />
-        <ClientCards items={data.items} businessName={businessName} onCopy={copyPhone} />
+        <ClientsTable items={data.items} businessName={businessName} onCopy={copyPhone} onDeleted={() => state.reload({ silent: true })} />
+        <ClientCards items={data.items} businessName={businessName} onCopy={copyPhone} onDeleted={() => state.reload({ silent: true })} />
         <Pagination page={data.page} pages={data.pages} total={data.total} onChange={changePage} />
       </div>
     );

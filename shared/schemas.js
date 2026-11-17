@@ -121,6 +121,11 @@ export const loginSchema = z.strictObject({
   password: z.string({ error: 'Escribe la contraseña.' }).min(1, 'Escribe la contraseña.').max(128),
 });
 
+/** Key of the hidden superadmin mode (checked on the server only). */
+export const superKeySchema = z.strictObject({
+  key: z.string({ error: 'Escribe la clave.' }).trim().min(1, 'Escribe la clave.').max(32),
+});
+
 const passwordsMatch = [
   (v) => v.password === v.passwordConfirm,
   { message: 'Las contraseñas no coinciden.', path: ['passwordConfirm'] },

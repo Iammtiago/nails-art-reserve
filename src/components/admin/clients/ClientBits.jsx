@@ -6,6 +6,7 @@ import { formatPhone } from '@shared/phone.js';
 import { whatsappLink } from '@shared/whatsapp.js';
 import { Badge } from '@/components/ui/Badge';
 import { Button, IconButton } from '@/components/ui/Button';
+import { SuperDeleteButton } from '@/components/admin/SuperMode';
 import { clientTag, firstNameOf, initialsOf } from './clientUtils';
 
 const AVATAR_SIZES = {
@@ -50,7 +51,7 @@ export function clientWhatsappHref(client, businessName) {
 }
 
 /** WhatsApp + copy phone. `compact` renders icon-only buttons for the desktop table. */
-export function ClientActions({ client, businessName, onCopy, compact = false }) {
+export function ClientActions({ client, businessName, onCopy, onDeleted, compact = false }) {
   const href = clientWhatsappHref(client, businessName);
   if (compact) {
     return (
@@ -66,6 +67,7 @@ export function ClientActions({ client, businessName, onCopy, compact = false })
           className="w-11 !px-0"
         />
         <IconButton icon={Copy} label={`Copiar teléfono de ${client.name}`} variant="ghost" onClick={() => onCopy(client)} />
+        <SuperDeleteButton entity="client" item={client} onDeleted={onDeleted} compact />
       </div>
     );
   }
@@ -85,6 +87,7 @@ export function ClientActions({ client, businessName, onCopy, compact = false })
       <Button variant="secondary" icon={Copy} className="flex-1" onClick={() => onCopy(client)} aria-label={`Copiar teléfono de ${client.name}`}>
         Copiar
       </Button>
+      <SuperDeleteButton entity="client" item={client} onDeleted={onDeleted} compact />
     </div>
   );
 }

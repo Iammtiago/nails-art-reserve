@@ -108,3 +108,6 @@ export const CSRF_HEADER = 'x-requested-with';
 export const CSRF_HEADER_VALUE = 'nails-art';
 
 export const ADMIN_COOKIE = 'na_admin';
+/** Short-lived elevation cookie of the hidden superadmin mode. */
+export const SUPER_COOKIE = 'na_super';
+export const SUPER_MINUTES = 15;

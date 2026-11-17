@@ -3,6 +3,7 @@
 import { CheckCircle2, CircleX, MessageCircle } from 'lucide-react';
 import { APPOINTMENT_STATUS } from '@shared/constants.js';
 import { Button } from '@/components/ui/Button';
+import { SuperDeleteButton } from '@/components/admin/SuperMode';
 
 /** «Asistió»: soft button with the success palette. */
 export const ATTENDED_CLASSES = 'bg-success-soft text-success hover:bg-success-soft hover:brightness-95';
@@ -29,7 +30,7 @@ export function WhatsAppIconLink({ href, label, className = '' }) {
  * Row/card actions. «Asistió» and «Cancelar» only for confirmed appointments; WhatsApp always.
  * compactOnLg: icon-only buttons between lg and xl, where the table is narrow.
  */
-export function AppointmentActions({ appointment, waHref, busyAction, disabled = false, onComplete, onCancel, compactOnLg = false, className = '' }) {
+export function AppointmentActions({ appointment, waHref, busyAction, disabled = false, onComplete, onCancel, onPurged, compactOnLg = false, className = '' }) {
   const confirmed = appointment.status === APPOINTMENT_STATUS.CONFIRMED;
   const labelClass = compactOnLg ? 'lg:max-xl:sr-only' : '';
   const completeLabel = `Marcar que ${appointment.clientName} asistió`;
@@ -67,6 +68,7 @@ export function AppointmentActions({ appointment, waHref, busyAction, disabled =
           </Button>
         </>
       ) : null}
+      <SuperDeleteButton entity="appointment" item={appointment} onDeleted={onPurged} compact />
       <WhatsAppIconLink href={waHref} label={`Escribir a ${appointment.clientName} por WhatsApp`} className="ml-auto" />
     </div>
   );

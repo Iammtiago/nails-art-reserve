@@ -98,6 +98,7 @@ export default function CitasPage() {
         onOpen={setSelected}
         onComplete={actions.complete}
         onCancel={actions.cancel}
+        onPurged={(a) => handleChanged(null, a.id)}
       />
     );
   } else if (fresh) {
@@ -158,6 +159,7 @@ export default function CitasPage() {
           disabled={Boolean(actions.busy)}
           onComplete={actions.complete}
           onCancel={actions.cancel}
+          onPurged={(a) => handleChanged(null, a.id)}
         />
       ) : null}
     </div>

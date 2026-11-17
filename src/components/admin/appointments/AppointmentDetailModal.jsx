@@ -7,6 +7,7 @@ import { formatPhone } from '@shared/phone.js';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
+import { SuperDeleteButton } from '@/components/admin/SuperMode';
 import { ATTENDED_CLASSES, CANCEL_CLASSES } from './AppointmentActions';
 import { cancelledByLabel, contactHref, formatInstant } from './appointmentUtils';
 
@@ -42,19 +43,24 @@ function DetailRow({ row }) {
   );
 }
 
-function DetailFooter({ appointment, waHref, busyAction, disabled, onComplete, onCancel }) {
+function DetailFooter({ appointment, waHref, busyAction, disabled, onComplete, onCancel, onPurged }) {
   const confirmed = appointment.status === APPOINTMENT_STATUS.CONFIRMED;
+  const purge = <SuperDeleteButton entity="appointment" item={appointment} onDeleted={onPurged} className="w-full sm:mr-auto sm:w-auto" />;
   if (appointment.kind === 'block') {
-    return confirmed ? (
-      <div className="flex justify-end">
-        <Button variant="secondary" icon={LockOpen} loading={busyAction === 'cancel'} disabled={disabled} onClick={() => onCancel(appointment)} className="w-full sm:w-auto">
-          Liberar horario
-        </Button>
+    return (
+      <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        {purge}
+        {confirmed ? (
+          <Button variant="secondary" icon={LockOpen} loading={busyAction === 'cancel'} disabled={disabled} onClick={() => onCancel(appointment)} className="w-full sm:w-auto">
+            Liberar horario
+          </Button>
+        ) : null}
       </div>
-    ) : null;
+    );
   }
   return (
     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
+      {purge}
       {confirmed ? (
         <Button variant="ghost" icon={CircleX} className={CANCEL_CLASSES} loading={busyAction === 'cancel'} disabled={disabled} onClick={() => onCancel(appointment)}>
           Cancelar cita
@@ -76,7 +82,7 @@ function DetailFooter({ appointment, waHref, busyAction, disabled, onComplete, o
  * Full detail of one appointment with the same actions as the list.
  * Works with list items (all fields) and calendar items (no created/cancelled/completed instants).
  */
-export function AppointmentDetailModal({ appointment, onClose, today, timezone, businessName, busyAction = null, disabled = false, onComplete, onCancel }) {
+export function AppointmentDetailModal({ appointment, onClose, today, timezone, businessName, busyAction = null, disabled = false, onComplete, onCancel, onPurged }) {
   const isToday = Boolean(today) && appointment.date === today;
   const waHref = contactHref(appointment, businessName);
 
@@ -98,6 +104,7 @@ export function AppointmentDetailModal({ appointment, onClose, today, timezone, 
           disabled={disabled}
           onComplete={onComplete}
           onCancel={onCancel}
+          onPurged={onPurged}
         />
       }
     >

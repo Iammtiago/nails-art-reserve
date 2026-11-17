@@ -26,7 +26,7 @@ function openLabel(appointment, today) {
   return `Ver detalle de la cita de ${appointment.clientName}: ${dateLabel(appointment.date, today)}, ${formatTimeRange(appointment.timeSlot, appointment.endTime)}`;
 }
 
-function AppointmentRow({ appointment, today, businessName, busyAction, disabled, onOpen, onComplete, onCancel, index }) {
+function AppointmentRow({ appointment, today, businessName, busyAction, disabled, onOpen, onComplete, onCancel, onPurged, index }) {
   const isToday = appointment.date === today;
   return (
     <li
@@ -62,6 +62,7 @@ function AppointmentRow({ appointment, today, businessName, busyAction, disabled
         disabled={disabled}
         onComplete={onComplete}
         onCancel={onCancel}
+        onPurged={onPurged}
         compactOnLg
         className="relative z-10 justify-end"
       />
@@ -69,7 +70,7 @@ function AppointmentRow({ appointment, today, businessName, busyAction, disabled
   );
 }
 
-function AppointmentCard({ appointment, today, businessName, busyAction, disabled, onOpen, onComplete, onCancel, index }) {
+function AppointmentCard({ appointment, today, businessName, busyAction, disabled, onOpen, onComplete, onCancel, onPurged, index }) {
   const isToday = appointment.date === today;
   return (
     <li className="glass enter relative p-4" style={{ animationDelay: staggerDelay(index) }}>
@@ -99,6 +100,7 @@ function AppointmentCard({ appointment, today, businessName, busyAction, disable
         disabled={disabled}
         onComplete={onComplete}
         onCancel={onCancel}
+        onPurged={onPurged}
         className="relative z-10 mt-3 border-t border-line/60 pt-3"
       />
     </li>
@@ -109,8 +111,8 @@ function AppointmentCard({ appointment, today, businessName, busyAction, disable
  * Appointment list: table-like rows inside a glass card from lg, stacked cards below.
  * busyFor(id) -> 'complete' | 'cancel' | null; anyBusy disables every action meanwhile.
  */
-export function AppointmentList({ items, today, businessName, busyFor, anyBusy, refreshing, onOpen, onComplete, onCancel }) {
-  const shared = { today, businessName, onOpen, onComplete, onCancel, disabled: anyBusy };
+export function AppointmentList({ items, today, businessName, busyFor, anyBusy, refreshing, onOpen, onComplete, onCancel, onPurged }) {
+  const shared = { today, businessName, onOpen, onComplete, onCancel, onPurged, disabled: anyBusy };
   return (
     <div className={`transition-opacity duration-200 ${refreshing ? 'opacity-60' : ''}`} aria-busy={refreshing || undefined}>
       <div className="glass hidden overflow-hidden lg:block">

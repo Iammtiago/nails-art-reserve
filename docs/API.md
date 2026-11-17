@@ -105,6 +105,17 @@ Todas las cuentas son `superadmin` (acceso completo). Máximo 5.
 - `PATCH /api/admin/accounts/:id/password` `{ password, passwordConfirm, currentPassword? }` → `{ account }`. Para tu propia cuenta `currentPassword` es obligatoria (`422 CURRENT_PASSWORD_INVALID`) y la cookie se renueva; para otra cuenta no se pide y sus sesiones abiertas dejan de valer.
 - `DELETE /api/admin/accounts/:id` → `{ ok: true }`. `409 ACCOUNT_SELF` si intentas borrar la tuya; `404 ACCOUNT_NOT_FOUND`.
 
+### Modo superadmin oculto
+
+Se abre con cuatro toques rápidos sobre el título de cualquier sección del panel. Eleva la sesión actual durante 15 minutos con la cookie `HttpOnly` `na_super`, ligada a esa cuenta; cerrar sesión también la borra.
+
+- `GET /api/admin/super` → `{ active, expiresAt }`.
+- `POST /api/admin/super/unlock` `{ key }` → `{ active: true, expiresAt }`. La clave es `1111`, fija por orden de Tiago, y solo se comprueba en el servidor. Clave mala: `401 BAD_SUPER_KEY`. Tras 5 fallos en 15 minutos (por cuenta e IP): `429 RATE_LIMITED`.
+- `POST /api/admin/super/lock` → `{ active: false }`.
+- `DELETE /api/admin/super/clients/:id` → `{ deleted: { clients: 1, appointments: n } }`. Borra la clienta y todas las citas con su teléfono.
+- `DELETE /api/admin/super/appointments/:id` → `{ deleted: { appointments: 1 } }`. Borra una cita o un horario ocupado y lo descuenta de los contadores de la clienta.
+- Sin el modo activo, los `DELETE` responden `403 SUPER_REQUIRED`. Cada borrado queda en la colección `purgelogs` con la cuenta, la hora y una copia de lo borrado.
+
 ### `GET /api/admin/clients?q=&page=&limit=`
 Ítems: `{ id, name, phone, totalAppointments, completedAppointments, lastAppointmentDate, lastVisitDate, createdAt }`. `summary: { total, recurring }` (recurrentes = 2+ visitas).
 

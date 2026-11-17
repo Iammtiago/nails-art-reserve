@@ -3,16 +3,17 @@
 // «Nueva cita» (manual booking from the panel) and «Ocupar horario» (time the salon keeps).
 // Both read the day's occupation to suggest free times; the server re-checks everything.
 
-import { CalendarPlus, Check, Copy, Lock, MessageCircle } from 'lucide-react';
+/* eslint-disable @next/next/no-img-element */
+import { CalendarPlus, Download, Lock, RotateCw } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { LIMITS, TICK_MINUTES } from '@shared/constants.js';
 import { formatDateLong, formatDuration, formatTime } from '@shared/format.js';
 import { candidateStarts, getDayConfig, ticksFor } from '@shared/schedule.js';
 import { adminAppointmentSchema, fieldErrorsFor, timeBlockSchema } from '@shared/schemas.js';
 import { toMinutes, toTime } from '@shared/time.js';
-import { whatsappLink } from '@shared/whatsapp.js';
 import { ApiError, apiGet, apiPost } from '@/lib/api';
 import { useAsync } from '@/lib/hooks';
+import { createTicketBlob, saveTicketImage } from '@/lib/ticket-image';
 import { useAdmin } from '@/components/admin/AdminContext';
 import { Button } from '@/components/ui/Button';
 import { Field, Input, Select } from '@/components/ui/Field';
@@ -166,36 +167,66 @@ function ManualForm({ initialDate, onDone, onCancel }) {
 function ManualDone({ appointment, onClose }) {
   const { settings } = useAdmin();
   const toast = useToast();
-  const text = `Hola ${appointment.clientName.split(' ')[0]}, tu cita en ${settings?.businessName || 'Nails Art'} quedó agendada: ${appointment.serviceName}, ${formatDateLong(
-    appointment.date,
-  ).toLowerCase()} a las ${formatTime(appointment.timeSlot)}. Tu código es ${appointment.bookingCode}; muéstralo al llegar.`;
+  const [image, setImage] = useState({ status: 'preparing', blob: null });
+  const [attempt, setAttempt] = useState(0);
+  const [saving, setSaving] = useState(false);
+  const businessName = settings?.businessName || 'Nails Art';
+  const logoUrl = settings?.logoUrl;
+  const instagramUrl = settings?.instagramUrl;
+
+  // Same ticket image the client gets; pre-generated so the click can share it (iOS needs the gesture).
+  useEffect(() => {
+    let alive = true;
+    setImage({ status: 'preparing', blob: null });
+    createTicketBlob({ appointment, businessName, logoUrl, instagramUrl })
+      .then((blob) => alive && setImage({ status: 'ready', blob }))
+      .catch(() => alive && setImage({ status: 'error', blob: null }));
+    return () => {
+      alive = false;
+    };
+  }, [appointment, businessName, logoUrl, instagramUrl, attempt]);
+
+  function download() {
+    if (image.status === 'error') {
+      setAttempt((n) => n + 1);
+      return;
+    }
+    if (image.status !== 'ready' || saving) return;
+    setSaving(true);
+    saveTicketImage(image.blob, appointment.bookingCode)
+      .then((result) => {
+        if (result === 'downloaded') toast.success('Ticket descargado. Envíaselo a la clienta.');
+      })
+      .catch(() => toast.error('No se pudo guardar la imagen. Intenta de nuevo.'))
+      .finally(() => setSaving(false));
+  }
+
+  const label = image.status === 'error' ? 'Reintentar imagen' : image.status === 'preparing' ? 'Preparando ticket…' : 'Descargar ticket';
+
   return (
     <div className="space-y-4 text-center">
-      <div className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-success-soft text-success">
-        <Check aria-hidden="true" className="h-7 w-7" />
-      </div>
       <div>
         <p className="font-display text-xl font-semibold">Cita agendada</p>
         <p className="mt-1 text-sm text-ink-2">
           {appointment.clientName} · {appointment.serviceName} · {formatDateLong(appointment.date)}, {formatTime(appointment.timeSlot)}
         </p>
       </div>
+      {appointment.qrDataUrl ? (
+        <div className="flex justify-center">
+          <img
+            src={appointment.qrDataUrl}
+            alt={`Código QR de la cita ${appointment.bookingCode}`}
+            width={200}
+            height={200}
+            className="h-[200px] w-[200px] rounded-2xl bg-white p-2 shadow-glass"
+            decoding="async"
+          />
+        </div>
+      ) : null}
       <p className="code-text rounded-2xl bg-secondary py-3 text-2xl font-bold text-secondary-on">{appointment.bookingCode}</p>
       <div className="flex flex-col gap-2 sm:flex-row sm:justify-center">
-        <Button variant="whatsapp" icon={MessageCircle} href={whatsappLink(appointment.clientPhone, text)} target="_blank" rel="noopener noreferrer">
-          Enviar por WhatsApp
-        </Button>
-        <Button
-          variant="secondary"
-          icon={Copy}
-          onClick={() =>
-            navigator.clipboard
-              ?.writeText(appointment.bookingCode)
-              .then(() => toast.success('Código copiado'))
-              .catch(() => {})
-          }
-        >
-          Copiar código
+        <Button icon={image.status === 'error' ? RotateCw : Download} onClick={download} loading={saving} disabled={image.status === 'preparing'}>
+          {label}
         </Button>
         <Button variant="ghost" onClick={onClose}>
           Listo

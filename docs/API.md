@@ -91,6 +91,9 @@ Configuración completa (incluye servicios inactivos y motivos de días bloquead
 ### `PATCH /api/admin/appointments/:id/complete` · `PATCH /api/admin/appointments/:id/cancel`
 `{ appointment }`. `409` si la cita no está confirmada.
 
+### `GET /api/admin/appointments/:id/ticket`
+Ticket de una cita con su QR (`{ ticket: { …, qrDataUrl, qrText } }`), para volver a descargarlo desde el detalle de la cita en Citas o Calendario. Los horarios ocupados responden `404`.
+
 ### `POST /api/admin/appointments` (cita manual)
 `{ serviceKey, date, timeSlot, clientName, clientPhone }` → `201 { appointment }` con `qrDataUrl`, `qrText` y `source: 'admin'`. Acepta cualquier hora en tramos de 15 min (también fuera del horario, del rango de reservas y del límite por teléfono). `409 SLOT_TAKEN` si choca, `422 PAST_TIME` si ya pasó.
 

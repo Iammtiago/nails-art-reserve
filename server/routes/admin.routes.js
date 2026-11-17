@@ -16,7 +16,7 @@ import { validate } from '../middleware/index.js';
 import { changePassword, createAccount, deleteAccount, listAccounts } from '../services/account.service.js';
 import { issueSession } from '../services/auth.service.js';
 import { env } from '../config/env.js';
-import { cancelByAdmin, completeAppointment, createAdminAppointment, createTimeBlock, listAppointments } from '../services/appointment.service.js';
+import { cancelByAdmin, completeAppointment, createAdminAppointment, createTimeBlock, getAdminTicket, listAppointments } from '../services/appointment.service.js';
 
 function publicBaseUrl(req) {
   return env().appUrl || `${req.protocol}://${req.get('host')}`;
@@ -46,6 +46,11 @@ adminRouter.post('/appointments', validate(adminAppointmentSchema), async (req, 
 // PATCH /api/admin/appointments/:id/cancel.
 adminRouter.post('/time-blocks', validate(timeBlockSchema), async (req, res) => {
   res.status(201).json({ block: await createTimeBlock(req.valid.body) });
+});
+
+// GET /api/admin/appointments/:id/ticket — QR and ticket data to download it again from the panel.
+adminRouter.get('/appointments/:id/ticket', validate(idParamSchema, 'params'), async (req, res) => {
+  res.json({ ticket: await getAdminTicket(req.valid.params.id, { baseUrl: publicBaseUrl(req) }) });
 });
 
 adminRouter.patch('/appointments/:id/complete', validate(idParamSchema, 'params'), async (req, res) => {

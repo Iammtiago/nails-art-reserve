@@ -1,6 +1,7 @@
 'use client';
 
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import { useSuperTaps } from '@/components/admin/SuperMode';
 import { useId } from 'react';
 
 /** Pill tabs. options: [{ value, label, count? }] */
@@ -82,11 +83,13 @@ export function Pagination({ page, pages, total, onChange }) {
 }
 
 export function PageHeader({ title, description, actions, eyebrow }) {
+  // Four quick taps on the title open the hidden superadmin prompt (admin panel only).
+  const onTitleTap = useSuperTaps();
   return (
     <header className="mb-5 flex flex-col gap-3 sm:mb-6 sm:flex-row sm:items-end sm:justify-between">
       <div className="min-w-0">
         {eyebrow ? <p className="eyebrow mb-1">{eyebrow}</p> : null}
-        <h1 className="flex items-center gap-2.5 font-display text-[1.7rem] font-semibold leading-tight sm:text-4xl">
+        <h1 onClick={onTitleTap} className="flex touch-manipulation select-none items-center gap-2.5 font-display text-[1.7rem] font-semibold leading-tight sm:text-4xl">
           {title}
           <span aria-hidden="true" className="sparkle sparkle-twinkle h-4 w-4 shrink-0 text-accent sm:h-5 sm:w-5" />
         </h1>

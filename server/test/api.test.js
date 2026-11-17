@@ -316,6 +316,72 @@ describe('admin', () => {
       .send({ currentPassword: 'otra-clave-tiago', password: 'una-clave-muy-larga', passwordConfirm: 'una-clave-muy-larga' });
   });
 
+  it('hidden superadmin mode: 403 without it, bad key rejected, right key deletes and audits', async () => {
+    const agent = await loginAgent();
+    const created = await book(booking());
+    assert.equal(created.status, 201);
+    await book(booking({ timeSlot: '14:00' }));
+    const { Appointment, Client, PurgeLog } = await import('../models/index.js');
+    const client = await Client.findOne({ phone: '584141234567' }).lean();
+    assert.equal(client.totalAppointments, 2);
+
+    // Without elevation: forbidden, nothing deleted.
+    assert.equal((await agent.delete(`/api/admin/super/appointments/${created.body.appointment.id}`).set(CSRF)).status, 403);
+    assert.equal((await agent.delete(`/api/admin/super/clients/${client._id}`).set(CSRF)).status, 403);
+    assert.equal((await request(app).post('/api/admin/super/unlock').set(CSRF).send({ key: '1111' })).status, 401);
+    assert.equal((await agent.get('/api/admin/super')).body.active, false);
+
+    // Wrong key.
+    const bad = await agent.post('/api/admin/super/unlock').set(CSRF).send({ key: '1234' });
+    assert.equal(bad.status, 401);
+    assert.equal(bad.body.code, 'BAD_SUPER_KEY');
+
+    // Right key: elevated for 15 minutes.
+    const ok = await agent.post('/api/admin/super/unlock').set(CSRF).send({ key: '1111' });
+    assert.equal(ok.status, 200);
+    assert.equal(ok.body.active, true);
+    assert.equal((await agent.get('/api/admin/super')).body.active, true);
+
+    // One appointment: gone, counters updated, slot free again, audited.
+    const one = await agent.delete(`/api/admin/super/appointments/${created.body.appointment.id}`).set(CSRF);
+    assert.equal(one.status, 200, JSON.stringify(one.body));
+    assert.equal(await Appointment.countDocuments({ _id: created.body.appointment.id }), 0);
+    assert.equal((await Client.findById(client._id).lean()).totalAppointments, 1);
+    assert.equal((await book(booking({ clientPhone: '0414 999 8888' }))).status, 201);
+
+    // The client and every appointment with her phone.
+    const all = await agent.delete(`/api/admin/super/clients/${client._id}`).set(CSRF);
+    assert.equal(all.status, 200);
+    assert.deepEqual(all.body.deleted, { clients: 1, appointments: 1 });
+    assert.equal(await Client.countDocuments({ phone: '584141234567' }), 0);
+    assert.equal(await Appointment.countDocuments({ clientPhone: '584141234567' }), 0);
+    assert.equal(await Appointment.countDocuments({ clientPhone: '584149998888' }), 1);
+
+    const logs = await PurgeLog.find().sort({ createdAt: 1 }).lean();
+    assert.equal(logs.length, 2);
+    assert.deepEqual(logs.map((l) => l.entity), ['appointment', 'client']);
+    assert.equal(logs[0].username, 'tiago');
+    assert.equal(logs[1].snapshot.appointments.length, 1);
+
+    // Leaving the mode locks deletion again.
+    assert.equal((await agent.post('/api/admin/super/lock').set(CSRF)).body.active, false);
+    const other = await Client.findOne({ phone: '584149998888' }).lean();
+    assert.equal((await agent.delete(`/api/admin/super/clients/${other._id}`).set(CSRF)).status, 403);
+  });
+
+  it('limits superadmin key attempts', async () => {
+    process.env.ENFORCE_RATE_LIMIT = '1';
+    try {
+      const agent = await loginAgent();
+      for (let i = 0; i < 5; i += 1) {
+        assert.equal((await agent.post('/api/admin/super/unlock').set(CSRF).send({ key: '0000' })).status, 401);
+      }
+      assert.equal((await agent.post('/api/admin/super/unlock').set(CSRF).send({ key: '1111' })).status, 429);
+    } finally {
+      delete process.env.ENFORCE_RATE_LIMIT;
+    }
+  });
+
   it('rejects wrong passwords with a generic message', async () => {
     await loginAgent();
     const res = await request(app).post('/api/auth/login').set(CSRF).send({ username: 'tiago', password: 'mala' });

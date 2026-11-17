@@ -32,8 +32,8 @@ export async function stopTestApp() {
 }
 
 export async function resetData() {
-  const { Appointment, Client, RateLimit } = await import('../models/index.js');
-  await Promise.all([Appointment.deleteMany({}), Client.deleteMany({}), RateLimit.deleteMany({})]);
+  const { Appointment, Client, PurgeLog, RateLimit } = await import('../models/index.js');
+  await Promise.all([Appointment.deleteMany({}), Client.deleteMany({}), PurgeLog.deleteMany({}), RateLimit.deleteMany({})]);
   await mongoose.connection.collection('settings').deleteMany({});
 }
 

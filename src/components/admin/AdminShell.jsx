@@ -11,6 +11,7 @@ import { LoadingState } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
 import { AdminContext } from './AdminContext';
 import { LoginScreen } from './LoginScreen';
+import { SuperBanner, SuperModeProvider } from './SuperMode';
 
 export const ADMIN_NAV = [
   { href: '/admin/citas', label: 'Citas', icon: ClipboardList },
@@ -123,6 +124,7 @@ export function AdminShell({ children }) {
 
   return (
     <AdminContext.Provider value={value}>
+      <SuperModeProvider handleError={handleError}>
       <div className="aurora aurora-animated" aria-hidden="true">
         <span />
       </div>
@@ -201,6 +203,7 @@ export function AdminShell({ children }) {
           </header>
 
           <main id="contenido" className="flex-1 px-3 pb-28 pt-4 sm:px-6 lg:px-8 lg:pb-10 lg:pt-8">
+            <SuperBanner />
             {children}
           </main>
         </div>
@@ -217,6 +220,7 @@ export function AdminShell({ children }) {
           ))}
         </div>
       </nav>
+      </SuperModeProvider>
     </AdminContext.Provider>
   );
 }

@@ -104,6 +104,8 @@ La cuenta principal ya existe (Tiago la creó el 2026-11-16 con el alta web, que
 
 Si alguien olvida su contraseña, desde la otra cuenta: **Cuentas → Nueva contraseña**. Nadie puede borrar su propia cuenta, así el panel nunca se queda sin acceso.
 
+**Modo superadmin oculto.** Cuatro toques rápidos sobre el título de cualquier sección del panel abren un modal que pide la clave (`1111`, fija por decisión de Tiago). Durante 15 minutos aparecen botones **Eliminar** en clientas (borra la clienta y todas sus citas) y en citas u horarios ocupados (borrado definitivo). Una banda roja indica que el modo está activo y tiene **Salir**. La clave se comprueba en el servidor, con 5 intentos cada 15 minutos, y cada borrado queda auditado en `purgelogs` con una copia de lo borrado.
+
 Protecciones: contraseña con scrypt, sesión en cookie `HttpOnly` de 12 h, 5 intentos fallidos cada 15 min por IP, cabecera anti-CSRF en toda escritura, CSP con nonce, `helmet` en la API y `noindex` en el panel.
 
 ## Guía de despliegue por consola

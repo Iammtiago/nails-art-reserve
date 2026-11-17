@@ -9,6 +9,7 @@ import {
   changePasswordSchema,
   dateParamSchema,
   idParamSchema,
+  superKeySchema,
   timeBlockSchema,
 } from '../../shared/schemas.js';
 import { validate } from '../middleware/index.js';
@@ -22,6 +23,7 @@ function publicBaseUrl(req) {
 }
 import { addBlockedDate, getCalendar, removeBlockedDate } from '../services/calendar.service.js';
 import { listClients } from '../services/client.service.js';
+import { lockSuper, purgeAppointment, purgeClient, requireSuper, superStatus, unlockSuper } from '../services/super.service.js';
 import { getSettingsDoc, toAdminSettings } from '../services/settings.service.js';
 
 // Every route here is mounted behind requireAdmin.
@@ -89,4 +91,27 @@ adminRouter.patch('/accounts/:id/password', validate(idParamSchema, 'params'), v
 
 adminRouter.delete('/accounts/:id', validate(idParamSchema, 'params'), async (req, res) => {
   res.json(await deleteAccount(req.valid.params.id, req.admin));
+});
+
+// ---------- hidden superadmin mode ----------
+// Four taps on a section title open the key prompt in the panel. Elevation lasts 15 minutes.
+
+adminRouter.get('/super', async (req, res) => {
+  res.json(await superStatus(req));
+});
+
+adminRouter.post('/super/unlock', validate(superKeySchema), async (req, res) => {
+  res.json(await unlockSuper(req, res, req.valid.body));
+});
+
+adminRouter.post('/super/lock', (_req, res) => {
+  res.json(lockSuper(res));
+});
+
+adminRouter.delete('/super/clients/:id', requireSuper, validate(idParamSchema, 'params'), async (req, res) => {
+  res.json(await purgeClient(req.valid.params.id, req.admin));
+});
+
+adminRouter.delete('/super/appointments/:id', requireSuper, validate(idParamSchema, 'params'), async (req, res) => {
+  res.json(await purgeAppointment(req.valid.params.id, req.admin));
 });

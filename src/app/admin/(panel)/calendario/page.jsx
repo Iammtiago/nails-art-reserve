@@ -201,6 +201,7 @@ export default function CalendarioPage() {
           disabled={Boolean(actions.busy)}
           onComplete={actions.complete}
           onCancel={actions.cancel}
+          onPurged={(a) => handleAppointmentChanged(null, a.id)}
         />
       ) : null}
     </div>

@@ -5,7 +5,7 @@
 
 import { createHash, randomBytes } from 'node:crypto';
 import jwt from 'jsonwebtoken';
-import { ADMIN_COOKIE } from '../../shared/constants.js';
+import { ADMIN_COOKIE, SUPER_COOKIE } from '../../shared/constants.js';
 import { SESSION_SECRET_MIN_LENGTH, env } from '../config/env.js';
 import { AppError, isDuplicateKey, unauthorized, unavailable } from '../lib/errors.js';
 import { burnPasswordCheck, verifyPassword } from '../lib/password.js';
@@ -21,7 +21,7 @@ const LOGIN_MAX_FAILURES = 5;
 const secretCache = globalThis.__nailsArtSecret || (globalThis.__nailsArtSecret = { value: null });
 
 /** ADMIN_SESSION_SECRET if set (32+ chars); otherwise a random key generated once and kept in MongoDB. */
-async function sessionSecret() {
+export async function sessionSecret() {
   const fromEnv = env().sessionSecret;
   if (fromEnv) {
     if (fromEnv.length < SESSION_SECRET_MIN_LENGTH) {
@@ -72,6 +72,7 @@ export async function issueSession(res, admin) {
 export function clearSession(res) {
   const { maxAge, ...options } = sessionCookieOptions();
   res.clearCookie(ADMIN_COOKIE, options);
+  res.clearCookie(SUPER_COOKIE, options);
 }
 
 /** Returns the admin for a valid session cookie, or null. */

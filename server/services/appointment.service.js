@@ -154,7 +154,8 @@ export async function createAppointment(input, { baseUrl }) {
     console.error('[appointments] could not update client directory', error);
   }
 
-  return serializeTicket(created.toObject());
+  // qrText lets the browser redraw the exact same QR on the downloadable ticket image.
+  return { ...serializeTicket(created.toObject()), qrText: verificationUrl(baseUrl, created.bookingCode) };
 }
 
 /** Active, still-cancellable appointments for a phone. */

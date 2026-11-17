@@ -127,6 +127,12 @@
   .aurora-animated::after {
     animation-delay: -9s;
   }
+  /* Phones struggle to animate big blurred blobs under an open modal: pause them meanwhile. */
+  html[data-modal-open] .aurora-animated::before,
+  html[data-modal-open] .aurora-animated::after,
+  html[data-modal-open] .aurora-animated > span {
+    animation-play-state: paused;
+  }
   .aurora-animated > span {
     animation-delay: -17s;
   }

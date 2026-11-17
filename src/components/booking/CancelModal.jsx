@@ -180,7 +180,7 @@ export function CancelModal({ open, onClose, settings, initialPhone = '' }) {
   const helpHref = settings?.phone ? whatsappLink(settings.phone, `Hola ${settings.businessName}, necesito ayuda con mi cita.`) : '';
 
   return (
-    <Modal open={open} onClose={onClose} title="Cancelar una cita" description="Escribe el teléfono con el que reservaste para ver tus citas activas." size="md">
+    <Modal open={open} onClose={onClose} title="Cancelar una cita" description="Escribe el teléfono con el que reservaste para ver tus citas activas." size="md" placement="top">
       <form
         onSubmit={(event) => {
           event.preventDefault();

@@ -1,6 +1,7 @@
 // Ticket PNG drawn on a <canvas> (no html2canvas): colors and fonts are read from the
 // live CSS variables, so the image follows the palette set in Configuración.
 
+import QRCode from 'qrcode';
 import { formatDateLong, formatTimeRange } from '@shared/format.js';
 
 const WIDTH = 1080;
@@ -158,6 +159,34 @@ function drawLogo(ctx, img, cx, cy, radius, theme) {
   ctx.restore();
 }
 
+/** Same URL the server puts in the QR (server/lib/qr.js): opens the scanner with the code. */
+function verificationUrlFor(code) {
+  return `${window.location.origin}/admin/escanear?codigo=${encodeURIComponent(String(code || '').toUpperCase())}`;
+}
+
+/** Paints a QR (2-module quiet zone) into the square. Returns false if it could not be built. */
+function drawQrModules(ctx, text, x, y, size, ink) {
+  if (!text) return false;
+  try {
+    const { modules } = QRCode.create(text, { errorCorrectionLevel: 'M' });
+    const count = modules.size;
+    const total = count + 4;
+    const cell = size / total;
+    ctx.fillStyle = ink;
+    for (let row = 0; row < count; row += 1) {
+      for (let col = 0; col < count; col += 1) {
+        if (modules.get(row, col)) {
+          // +0.5 px overlap avoids hairline gaps between cells on scaled canvases.
+          ctx.fillRect(x + (col + 2) * cell, y + (row + 2) * cell, cell + 0.5, cell + 0.5);
+        }
+      }
+    }
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function canvasToBlob(canvas) {
   return new Promise((resolve, reject) => {
     canvas.toBlob((blob) => (blob ? resolve(blob) : reject(new Error('No se pudo crear la imagen.'))), 'image/png');
@@ -221,15 +250,18 @@ export async function createTicketBlob({ appointment, businessName, logoUrl, ins
   roundedRect(ctx, qrX - 20, qrY - 20, qrSize + 40, qrSize + 40, 32);
   ctx.fillStyle = withAlpha(theme.secondary, 0.22);
   ctx.fill();
-  if (qr.status === 'fulfilled') {
-    ctx.save();
+  ctx.save();
+  roundedRect(ctx, qrX, qrY, qrSize, qrSize, 16);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fill();
+  // Draw the QR from its modules: no image decoding, so it cannot silently go missing on phones
+  // (a failed data-URL decode used to leave the frame empty). The image is only a fallback.
+  const drawn = drawQrModules(ctx, appointment.qrText || verificationUrlFor(appointment.bookingCode), qrX, qrY, qrSize, theme.text);
+  if (!drawn && qr.status === 'fulfilled') {
     ctx.imageSmoothingEnabled = false;
-    roundedRect(ctx, qrX, qrY, qrSize, qrSize, 16);
-    ctx.fillStyle = '#FFFFFF';
-    ctx.fill();
     ctx.drawImage(qr.value, qrX, qrY, qrSize, qrSize);
-    ctx.restore();
   }
+  ctx.restore();
 
   // Booking code on a secondary block.
   const codeBox = { x: 180, y: 892, w: 720, h: 156 };

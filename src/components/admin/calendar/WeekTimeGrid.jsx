@@ -79,10 +79,18 @@ function WeekAppointmentBlock({ appointment, frame, onOpen }) {
   );
 }
 
-function WeekDayColumn({ day, appointments, workingHours, frame, now, onOpenAppointment }) {
+function WeekDayColumn({ day, appointments, workingHours, frame, now, isToday, onOpenDay, onOpenAppointment }) {
   const state = dayState(day);
   const spans = state === 'open' ? offHourSpans(segmentsFor(workingHours, day.date), frame) : [];
   const showNow = now && day.date === now.date && now.minutes >= frame.start && now.minutes <= frame.end;
+
+  // Tapping anywhere in the column opens the day, with the half hour under the pointer.
+  const openAt = (event) => {
+    const rect = event.currentTarget.getBoundingClientRect();
+    const ratio = rect.height ? Math.min(Math.max((event.clientY - rect.top) / rect.height, 0), 0.9999) : 0;
+    const minutes = frame.start + Math.floor((ratio * (frame.end - frame.start)) / 30) * 30;
+    onOpenDay(day.date, toTime(minutes));
+  };
 
   return (
     <div
@@ -90,6 +98,12 @@ function WeekDayColumn({ day, appointments, workingHours, frame, now, onOpenAppo
         day.isPast ? 'opacity-80' : ''
       }`}
     >
+      <button
+        type="button"
+        onClick={openAt}
+        aria-label={`Agendar u ocupar horas: ${dayAriaLabel(day, isToday)}`}
+        className="absolute inset-0 z-0 cursor-pointer transition-colors hover:bg-secondary-soft/40 focus-visible:bg-secondary-soft/40"
+      />
       {spans.map((span) => {
         const top = toPercent(span.start, frame);
         const height = toPercent(span.end, frame) - top;
@@ -97,7 +111,7 @@ function WeekDayColumn({ day, appointments, workingHours, frame, now, onOpenAppo
           <div
             key={`${span.kind}-${span.start}`}
             aria-hidden="true"
-            className={`absolute inset-x-0 flex items-center justify-center ${span.kind === 'pause' ? 'bg-primary-soft/80' : 'bg-primary-soft/45'}`}
+            className={`pointer-events-none absolute inset-x-0 flex items-center justify-center ${span.kind === 'pause' ? 'bg-primary-soft/80' : 'bg-primary-soft/45'}`}
             style={{ top: `${top}%`, height: `${height}%` }}
           >
             {span.kind === 'pause' && span.end - span.start >= 30 ? (
@@ -107,7 +121,7 @@ function WeekDayColumn({ day, appointments, workingHours, frame, now, onOpenAppo
         );
       })}
       {state !== 'open' ? (
-        <div aria-hidden="true" className={`absolute inset-x-1 top-3 text-center text-xs font-semibold ${state === 'blocked' ? 'text-danger' : 'text-ink-3'}`}>
+        <div aria-hidden="true" className={`pointer-events-none absolute inset-x-1 top-3 text-center text-xs font-semibold ${state === 'blocked' ? 'text-danger' : 'text-ink-3'}`}>
           {state === 'blocked' ? 'Bloqueado' : 'Cerrado'}
           {state === 'blocked' && day.blockReason ? <span className="mt-0.5 block truncate font-normal">{day.blockReason}</span> : null}
         </div>
@@ -171,6 +185,8 @@ export function WeekTimeGrid({ days, appointments, workingHours, now, today, onO
               workingHours={workingHours}
               frame={frame}
               now={now}
+              isToday={day.date === today}
+              onOpenDay={onOpenDay}
               onOpenAppointment={onOpenAppointment}
             />
           ))}

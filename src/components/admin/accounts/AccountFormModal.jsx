@@ -61,7 +61,7 @@ function AccountForm({ onCreated, onCancel }) {
           {formError}
         </p>
       ) : null}
-      <div className="sticky bottom-0 -mx-1 flex flex-col-reverse gap-2 bg-gradient-to-t from-surface via-surface/95 to-transparent px-1 pt-3 sm:flex-row sm:justify-end">
+      <div className="sticky bottom-0 -mx-1 flex flex-col-reverse gap-2 bg-transparent px-1 pt-3 sm:flex-row sm:justify-end">
         <Button variant="secondary" onClick={onCancel}>
           Cancelar
         </Button>

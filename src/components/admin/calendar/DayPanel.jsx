@@ -3,7 +3,7 @@
 import { AlertTriangle, CalendarPlus, Clock, Lock, LockOpen } from 'lucide-react';
 import { useState } from 'react';
 import { LIMITS } from '@shared/constants.js';
-import { formatDateLong, formatDuration, formatTimeRange, pluralize } from '@shared/format.js';
+import { formatDateLong, formatDuration, formatTime, formatTimeRange, pluralize } from '@shared/format.js';
 import { apiDelete, apiPost } from '@/lib/api';
 import { useAdmin } from '@/components/admin/AdminContext';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
@@ -96,7 +96,7 @@ function UnblockBar({ saving, onUnblock }) {
 }
 
 /** One day: status, occupancy, appointments and block/unblock (today and future only). */
-export function DayPanel({ day, appointments, workingHours, isToday, onClose, onOpenAppointment, onChanged, onNewAppointment, onBlockTime }) {
+export function DayPanel({ day, appointments, workingHours, isToday, time = null, onClose, onOpenAppointment, onChanged, onNewAppointment, onBlockTime }) {
   const toast = useToast();
   const { handleError } = useAdmin();
   const [reason, setReason] = useState('');
@@ -168,10 +168,10 @@ export function DayPanel({ day, appointments, workingHours, isToday, onClose, on
         {editable ? (
           <div className="grid grid-cols-2 gap-2">
             <Button size="sm" icon={CalendarPlus} onClick={onNewAppointment}>
-              Agendar aquí
+              {time ? `Agendar a las ${formatTime(time)}` : 'Agendar aquí'}
             </Button>
             <Button size="sm" variant="secondary" icon={Clock} onClick={onBlockTime}>
-              Ocupar horas
+              {time ? `Ocupar desde ${formatTime(time)}` : 'Ocupar horas'}
             </Button>
           </div>
         ) : null}

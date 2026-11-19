@@ -122,6 +122,9 @@ Se abre con cuatro toques rápidos sobre el título de cualquier sección del pa
 ### `GET /api/admin/clients?q=&page=&limit=`
 Ítems: `{ id, name, phone, totalAppointments, completedAppointments, lastAppointmentDate, lastVisitDate, createdAt }`. `summary: { total, recurring }` (recurrentes = 2+ visitas).
 
+### `PATCH /api/admin/clients/:id`
+`{ name, phone }` → `{ client }`. Sus citas pasan al nombre y teléfono nuevos (con ese número las ve y las cancela). `409 PHONE_TAKEN` (con `details` en `phone`) si el número es de otra clienta, `404 CLIENT_NOT_FOUND`.
+
 ### `GET /api/admin/calendar?from=&to=` (máximo 62 días)
 ```json
 { "from", "to", "now", "workingHours",

@@ -1,6 +1,6 @@
 'use client';
 
-import { Copy, MessageCircle } from 'lucide-react';
+import { Copy, MessageCircle, Pencil } from 'lucide-react';
 import { formatDateShort } from '@shared/format.js';
 import { formatPhone } from '@shared/phone.js';
 import { whatsappLink } from '@shared/whatsapp.js';
@@ -51,7 +51,7 @@ export function clientWhatsappHref(client, businessName) {
 }
 
 /** WhatsApp + copy phone. `compact` renders icon-only buttons for the desktop table. */
-export function ClientActions({ client, businessName, onCopy, onDeleted, compact = false }) {
+export function ClientActions({ client, businessName, onCopy, onEdit, onDeleted, compact = false }) {
   const href = clientWhatsappHref(client, businessName);
   if (compact) {
     return (
@@ -66,6 +66,7 @@ export function ClientActions({ client, businessName, onCopy, onDeleted, compact
           title="Escribir por WhatsApp"
           className="w-11 !px-0"
         />
+        <IconButton icon={Pencil} label={`Editar a ${client.name}`} variant="ghost" onClick={() => onEdit(client)} />
         <IconButton icon={Copy} label={`Copiar teléfono de ${client.name}`} variant="ghost" onClick={() => onCopy(client)} />
         <SuperDeleteButton entity="client" item={client} onDeleted={onDeleted} compact />
       </div>
@@ -87,6 +88,7 @@ export function ClientActions({ client, businessName, onCopy, onDeleted, compact
       <Button variant="secondary" icon={Copy} className="flex-1" onClick={() => onCopy(client)} aria-label={`Copiar teléfono de ${client.name}`}>
         Copiar
       </Button>
+      <IconButton icon={Pencil} label={`Editar a ${client.name}`} variant="secondary" onClick={() => onEdit(client)} />
       <SuperDeleteButton entity="client" item={client} onDeleted={onDeleted} compact />
     </div>
   );

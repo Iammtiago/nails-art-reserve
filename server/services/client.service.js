@@ -1,4 +1,5 @@
-import { Client } from '../models/index.js';
+import { AppError, isDuplicateKey, notFound } from '../lib/errors.js';
+import { Appointment, Client } from '../models/index.js';
 
 function escapeRegex(text) {
   return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -42,6 +43,30 @@ export function serializeClient(c) {
     lastVisitDate: c.lastVisitDate,
     createdAt: c.createdAt,
   };
+}
+
+const PHONE_TAKEN = 'Ese teléfono ya es de otra clienta.';
+
+/**
+ * Edits a client's name and phone. Her appointments follow: they carry the phone (it is how she
+ * looks up and cancels them) and the name shown in the agenda, so both are updated together.
+ */
+export async function updateClient(id, { name, phone }) {
+  const client = await Client.findById(id).lean();
+  if (!client) throw notFound('Esa clienta ya no existe.', 'CLIENT_NOT_FOUND');
+  const taken = () =>
+    new AppError(409, PHONE_TAKEN, { code: 'PHONE_TAKEN', details: [{ path: 'phone', message: PHONE_TAKEN }] });
+  if (phone !== client.phone && (await Client.exists({ phone, _id: { $ne: client._id } }))) throw taken();
+
+  let updated;
+  try {
+    updated = await Client.findByIdAndUpdate(id, { $set: { name, phone } }, { returnDocument: 'after', runValidators: true }).lean();
+  } catch (error) {
+    if (isDuplicateKey(error, 'phone')) throw taken();
+    throw error;
+  }
+  await Appointment.updateMany({ clientPhone: client.phone, kind: { $ne: 'block' } }, { $set: { clientPhone: phone, clientName: name } });
+  return serializeClient(updated);
 }
 
 export async function listClients({ q, page, limit }) {

@@ -12,6 +12,7 @@ import { Pagination } from '@/components/ui/Controls';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
 import { ClientCards } from './ClientCards';
+import { ClientEditModal } from './ClientEditModal';
 import { ClientSearch } from './ClientSearch';
 import { ClientsStats } from './ClientsStats';
 import { ClientsTable } from './ClientsTable';
@@ -55,6 +56,7 @@ export function ClientsDirectory() {
   const listTopRef = useRef(null);
 
   const [query, setQuery] = useState('');
+  const [editing, setEditing] = useState(null);
   const q = useDebouncedValue(query.trim(), 250);
   // The page belongs to the search it was chosen for, so a new search starts on page 1.
   const [paging, setPaging] = useState({ q: '', page: 1 });
@@ -114,8 +116,8 @@ export function ClientsDirectory() {
   } else {
     body = (
       <div aria-busy={pending || undefined} className={`transition-opacity duration-200 ${pending ? 'opacity-60' : ''}`}>
-        <ClientsTable items={data.items} businessName={businessName} onCopy={copyPhone} onDeleted={() => state.reload({ silent: true })} />
-        <ClientCards items={data.items} businessName={businessName} onCopy={copyPhone} onDeleted={() => state.reload({ silent: true })} />
+        <ClientsTable items={data.items} businessName={businessName} onCopy={copyPhone} onEdit={setEditing} onDeleted={() => state.reload({ silent: true })} />
+        <ClientCards items={data.items} businessName={businessName} onCopy={copyPhone} onEdit={setEditing} onDeleted={() => state.reload({ silent: true })} />
         <Pagination page={data.page} pages={data.pages} total={data.total} onChange={changePage} />
       </div>
     );
@@ -128,6 +130,7 @@ export function ClientsDirectory() {
       <div ref={listTopRef} className="scroll-mt-24 lg:scroll-mt-8">
         {body}
       </div>
+      <ClientEditModal client={editing} onClose={() => setEditing(null)} onSaved={() => state.reload({ silent: true })} />
     </>
   );
 }

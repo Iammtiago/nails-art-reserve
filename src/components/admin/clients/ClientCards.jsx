@@ -12,7 +12,7 @@ function Figure({ label, children }) {
   );
 }
 
-function ClientCard({ client, index, businessName, onCopy, onDeleted }) {
+function ClientCard({ client, index, businessName, onCopy, onEdit, onDeleted }) {
   return (
     <li className="glass enter flex flex-col p-4" style={staggerDelay(index, 40, 80)}>
       <div className="flex items-start gap-3">
@@ -38,18 +38,18 @@ function ClientCard({ client, index, businessName, onCopy, onDeleted }) {
         </Figure>
       </dl>
       <div className="mt-3 pt-0.5 md:mt-auto md:pt-3">
-        <ClientActions client={client} businessName={businessName} onCopy={onCopy} onDeleted={onDeleted} />
+        <ClientActions client={client} businessName={businessName} onCopy={onCopy} onEdit={onEdit} onDeleted={onDeleted} />
       </div>
     </li>
   );
 }
 
 /** Stacked cards below lg (two columns from md). */
-export function ClientCards({ items, businessName, onCopy, onDeleted }) {
+export function ClientCards({ items, businessName, onCopy, onEdit, onDeleted }) {
   return (
     <ul className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:hidden" aria-label="Directorio de clientas">
       {items.map((client, index) => (
-        <ClientCard key={client.id} client={client} index={index} businessName={businessName} onCopy={onCopy} onDeleted={onDeleted} />
+        <ClientCard key={client.id} client={client} index={index} businessName={businessName} onCopy={onCopy} onEdit={onEdit} onDeleted={onDeleted} />
       ))}
     </ul>
   );

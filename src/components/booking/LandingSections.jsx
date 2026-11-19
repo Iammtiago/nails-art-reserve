@@ -44,7 +44,7 @@ function SectionHeading({ eyebrow, title, description, id, center = false }) {
 const STEPS = [
   { icon: Hand, title: 'Elige tu servicio', text: 'Escoge lo que te vas a hacer. Verás solo los días y horas que de verdad están libres.' },
   { icon: UserRound, title: 'Deja tu nombre y teléfono', text: 'Sin cuentas ni contraseñas. Tu teléfono es tu llave para ver o cancelar tu cita.' },
-  { icon: QrCode, title: 'Muestra tu ticket al llegar', text: 'Guárdalo en tu galería. En el salón escanean tu código QR o tu clave de 6 caracteres.' },
+  { icon: QrCode, title: 'Muestra tu ticket al llegar', text: 'Guárdalo en tu galería. Al llegar se escanea tu código QR o tu clave de 6 caracteres.' },
 ];
 
 export function HowItWorks() {
@@ -149,7 +149,7 @@ export function GoodToKnow({ settings, onCancelClick }) {
 
 export function QuoteBand() {
   return (
-    <section className="px-4 py-6 sm:px-6" aria-label="Frase del salón">
+    <section className="px-4 py-6 sm:px-6" aria-label="Frase destacada">
       <figure className="reveal relative mx-auto max-w-6xl overflow-hidden rounded-[2rem] bg-gradient-to-br from-primary via-primary to-accent px-6 py-12 text-center text-primary-on shadow-lift sm:px-12 sm:py-16">
         <div aria-hidden="true" className="absolute -left-16 -top-16 h-56 w-56 rounded-full bg-secondary/25 blur-3xl" />
         <div aria-hidden="true" className="absolute -bottom-20 -right-10 h-64 w-64 rounded-full bg-accent/50 blur-3xl" />
@@ -248,7 +248,7 @@ export function VisitInfo({ settings }) {
             {settings.phone ? (
               <ContactLink href={whatsappLink(settings.phone)} external icon={MessageCircle} title="Escribir por WhatsApp" detail={formatPhone(settings.phone)} tone="whatsapp" />
             ) : null}
-            {tel ? <ContactLink href={tel} icon={Phone} title="Llamar al salón" detail={formatPhone(settings.phone)} /> : null}
+            {tel ? <ContactLink href={tel} icon={Phone} title="Llamar ahora" detail={formatPhone(settings.phone)} /> : null}
             {handle ? <ContactLink href={settings.instagramUrl} external icon={InstagramGlyph} title="Mira nuestros diseños" detail={`${handle} en Instagram`} /> : null}
           </div>
         </div>

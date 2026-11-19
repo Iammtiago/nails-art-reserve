@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { forgetContact, loadContact, saveContact } from '@/lib/saved-contact';
 import { DateTimeStep } from './DateTimeStep';
 import { DetailsStep } from './DetailsStep';
 import { ServiceStep } from './ServiceStep';
@@ -19,6 +20,14 @@ export function BookingWizard({ settings, onOpenCancel, pick }) {
   const [date, setDate] = useState(null);
   const [time, setTime] = useState(null);
   const [contact, setContact] = useState(EMPTY_CONTACT);
+  // Name and phone from her last booking on this device (read after mount: no SSR mismatch).
+  const [remembered, setRemembered] = useState(false);
+  useEffect(() => {
+    const saved = loadContact();
+    if (!saved) return;
+    setContact((c) => (c.clientName || c.clientPhone ? c : { ...EMPTY_CONTACT, ...saved }));
+    setRemembered(true);
+  }, []);
   const [appointment, setAppointment] = useState(null);
   const wizardRef = useRef(null);
   const headingRef = useRef(null);
@@ -58,9 +67,20 @@ export function BookingWizard({ settings, onOpenCancel, pick }) {
 
   const changeContact = useCallback((key, value) => setContact((c) => ({ ...c, [key]: value })), []);
 
-  const booked = useCallback((result) => {
-    setAppointment(result);
-    setStep(4);
+  const booked = useCallback(
+    (result) => {
+      saveContact(contact);
+      setRemembered(true);
+      setAppointment(result);
+      setStep(4);
+    },
+    [contact],
+  );
+
+  const forget = useCallback(() => {
+    forgetContact();
+    setRemembered(false);
+    setContact(EMPTY_CONTACT);
   }, []);
 
   const slotTaken = useCallback(() => {
@@ -89,6 +109,8 @@ export function BookingWizard({ settings, onOpenCancel, pick }) {
           time={time}
           contact={contact}
           onContactChange={changeContact}
+          remembered={remembered}
+          onForget={forget}
           onEdit={() => setStep(2)}
           onBooked={booked}
           onSlotTaken={slotTaken}

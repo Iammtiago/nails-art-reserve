@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 
 import { DEFAULT_SETTINGS, BOOKING_CODE_ALPHABET } from '../constants.js';
-import { addDays, dayOfWeek, diffDays, nowInTimezone, parseTypedTime, startOfWeek } from '../time.js';
+import { addDays, dayOfWeek, diffDays, nowInTimezone, parseTypedTime, partsToTime, startOfWeek } from '../time.js';
 import { candidateStarts, checkSlot, computeAvailability, daySegments, ticksFor } from '../schedule.js';
 import { formatPhone, normalizePhone } from '../phone.js';
 import { buildThemeTokens, contrastRatio, paletteReport } from '../color.js';
@@ -38,14 +38,14 @@ describe('schedule', () => {
     ]);
   });
 
-  it('offers 1-hour services on the hour grid of each segment', () => {
+  it('offers 1-hour services every 30 minutes in each segment (default since 2026-11-19)', () => {
     const starts = candidateStarts(saturday, 60).map((m) => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`);
-    assert.deepEqual(starts, ['8:30', '9:30', '10:30', '11:30', '14:00', '15:00', '16:00', '17:00', '18:00']);
+    assert.deepEqual(starts, ['8:30', '9:00', '9:30', '10:00', '10:30', '11:00', '11:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00']);
   });
 
   it('only offers 2-hour services that fit before the break or closing', () => {
     const starts = candidateStarts(saturday, 120);
-    assert.deepEqual(starts, [510, 570, 630, 840, 900, 960, 1020]);
+    assert.deepEqual(starts, [510, 540, 570, 600, 630, 840, 870, 900, 930, 960, 990, 1020]);
   });
 
   it('marks overlapping slots as taken', () => {
@@ -78,7 +78,7 @@ describe('schedule', () => {
   it('hides past starts and respects the minimum lead time today', () => {
     const now = { date: SATURDAY, minutes: 9 * 60 + 45 }; // 9:45
     const result = computeAvailability({ settings, date: SATURDAY, durationMinutes: 60, occupied: new Set(), now });
-    assert.equal(result.slots[0].time, '11:30'); // 10:30 < 9:45 + 60
+    assert.equal(result.slots[0].time, '11:00'); // 10:30 < 9:45 + 60 = 10:45
   });
 
   it('says the day is over (not full) once every start today has passed', () => {
@@ -237,5 +237,22 @@ describe('format and whatsapp', () => {
     });
     assert.ok(text.startsWith('¡Hola Nails Art! Acabo de agendar mi cita.\n👤 Nombre: Ana Ruiz'));
     assert.ok(whatsappLink('584147368595', text).startsWith('https://wa.me/584147368595?text=%C2%A1Hola'));
+  });
+});
+
+describe('hour and minutes typed in two boxes', () => {
+  it('builds HH:mm with a. m. / p. m.', () => {
+    assert.deepEqual(partsToTime('5', '30', 'pm'), { time: '17:30', error: null });
+    assert.deepEqual(partsToTime('6', '45', 'am'), { time: '06:45', error: null });
+    assert.deepEqual(partsToTime('12', '00', 'pm'), { time: '12:00', error: null });
+    assert.deepEqual(partsToTime('12', '15', 'am'), { time: '00:15', error: null });
+  });
+
+  it('explains what is wrong instead of guessing', () => {
+    assert.deepEqual(partsToTime('', '', 'pm'), { time: '', error: null });
+    assert.match(partsToTime('13', '00', 'pm').error, /1 a 12/);
+    assert.match(partsToTime('5', '', 'pm').error, /minutos/);
+    assert.match(partsToTime('5', '75', 'pm').error, /00 a 59/);
+    assert.match(partsToTime('5', '40', 'pm').error, /15 minutos/);
   });
 });

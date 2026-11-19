@@ -6,6 +6,7 @@ import { formatDateLong, formatTime, formatTimeRange, pluralize } from '@shared/
 import { PHONE_HINT, normalizePhone } from '@shared/phone.js';
 import { whatsappLink } from '@shared/whatsapp.js';
 import { ApiError, apiGet, apiPatch, errorMessage } from '@/lib/api';
+import { loadContact } from '@/lib/saved-contact';
 import { Button } from '@/components/ui/Button';
 import { useConfirm } from '@/components/ui/ConfirmDialog';
 import { Field, Input } from '@/components/ui/Field';
@@ -143,6 +144,8 @@ export function CancelModal({ open, onClose, settings, initialPhone = '' }) {
       setPhone(initialPhone);
       runSearch(initialPhone);
     } else {
+      // Her phone from a booking on this device, ready to search (not searched on its own).
+      setPhone((current) => current || loadContact()?.clientPhone || '');
       setSearch(IDLE);
     }
     return () => controllerRef.current?.abort();

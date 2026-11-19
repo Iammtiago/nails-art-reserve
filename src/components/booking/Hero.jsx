@@ -157,15 +157,18 @@ export function Hero({ settings, onPickService }) {
           <StatusChip status={status} />
           <p className="eyebrow mt-6 flex items-center gap-2">
             <Sparkles aria-hidden="true" className="h-3.5 w-3.5" />
-            {settings.businessName} · Salón de uñas
+            {settings.businessName} · Manicurista
           </p>
           <h1 id="hero-title" className="relative mt-3 text-balance font-display text-[2.35rem] font-semibold leading-[1.05] sm:text-6xl lg:text-[4.1rem]">
-            No existen manos feas, <span className="accent-word">solo uñas sin cita.</span>
+            Arte y color <span className="accent-word">en cada detalle.</span>
             <span aria-hidden="true" className="sparkle sparkle-twinkle absolute -top-3 right-[8%] h-6 w-6 text-accent sm:h-8 sm:w-8" />
             <span aria-hidden="true" className="sparkle sparkle-twinkle absolute -bottom-2 right-[30%] h-3.5 w-3.5 text-secondary [animation-delay:-1.4s] sm:h-4 sm:w-4" />
           </h1>
-          <p className="mt-5 max-w-xl text-pretty text-base leading-relaxed text-ink-2 sm:text-lg">
-            Consiéntete sin escribir mil mensajes: elige tu servicio, el día y la hora, y en menos de un minuto tienes tu cita confirmada con su ticket QR.
+          <p className="mt-5 font-display text-2xl font-semibold italic leading-snug text-primary-ink sm:text-[1.9rem]">
+            Tu momento de consentirte comienza aquí.
+          </p>
+          <p className="mt-2 max-w-xl text-pretty text-base leading-relaxed text-ink-2 sm:text-lg">
+            Elige tu servicio, el día y la hora, y en menos de un minuto tendrás tu cita confirmada con tu ticket QR.
           </p>
 
           <div className="mt-7 flex flex-col gap-3 min-[420px]:flex-row">

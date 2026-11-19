@@ -4,17 +4,43 @@ import { currentInstant } from '../lib/clock.js';
 import { isDuplicateKey } from '../lib/errors.js';
 import { Settings } from '../models/index.js';
 
+/**
+ * One-time data fixes, applied once per settings document (idempotent: the id is stored).
+ * 2026-11-19: Tiago asked for start times every 30 minutes, so days that started every
+ * 60+ minutes move to 30. The admin can still pick another step afterwards.
+ */
+const MIGRATIONS = [
+  {
+    id: '2026-11-19-starts-every-30',
+    update: { $set: { 'workingHours.$[day].slotDurationMinutes': 30 } },
+    arrayFilters: [{ 'day.slotDurationMinutes': { $gt: 30 } }],
+  },
+];
+
+async function applyMigrations(doc) {
+  const pending = MIGRATIONS.filter((m) => !(doc.appliedMigrations || []).includes(m.id));
+  if (!pending.length) return doc;
+  for (const m of pending) {
+    await Settings.updateOne(
+      { key: 'main', appliedMigrations: { $ne: m.id } },
+      { ...m.update, $addToSet: { appliedMigrations: m.id } },
+      { arrayFilters: m.arrayFilters, runValidators: false },
+    );
+  }
+  return Settings.findOne({ key: 'main' }).lean();
+}
+
 /** Returns the settings singleton as a plain object, creating it with defaults on first use. */
 export async function getSettingsDoc() {
   let doc = await Settings.findOne({ key: 'main' }).lean();
-  if (doc) return doc;
+  if (doc) return applyMigrations(doc);
   try {
     await Settings.create({ key: 'main' });
   } catch (error) {
     if (!isDuplicateKey(error)) throw error;
   }
   doc = await Settings.findOne({ key: 'main' }).lean();
-  return doc;
+  return applyMigrations(doc);
 }
 
 export function businessNow(settings) {

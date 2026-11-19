@@ -122,7 +122,7 @@ export function ConfigEditor({ initial }) {
   };
 
   return (
-    <form ref={rootRef} noValidate onSubmit={onSubmit} aria-label="Configuración del salón">
+    <form ref={rootRef} noValidate onSubmit={onSubmit} aria-label="Configuración del negocio">
       <ConfigStats draft={draft} previewColors={previewColors} />
 
       <div className="grid gap-4 sm:gap-5 lg:grid-cols-2 lg:items-start">

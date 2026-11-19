@@ -14,7 +14,7 @@ const STATUS_TEXT = {
   full: 'completo',
   ended: 'por hoy ya no quedan horarios',
   closed: 'cerrado',
-  blocked: 'el salón no atiende',
+  blocked: 'ese día no hay atención',
   past: 'ya pasó',
   out_of_window: 'fuera del rango de reservas',
 };

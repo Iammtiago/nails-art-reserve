@@ -85,6 +85,8 @@ const settingsSchema = new Schema(
       },
     },
     blockedDates: { type: [blockedDateSchema], default: [] },
+    // One-time data fixes already applied to this document (see settings.service.js).
+    appliedMigrations: { type: [String], default: [] },
   },
   { timestamps: true, minimize: false },
 );

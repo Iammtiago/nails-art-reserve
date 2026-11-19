@@ -1,6 +1,6 @@
 # Nails Art · Reservas
 
-Aplicación de reservas para el salón de uñas **Nails Art** (`@nailsart.sc`, San Cristóbal).
+Aplicación de reservas para **Nails Art**, manicurista independiente (`@nailsart.sc`, San Cristóbal).
 
 - **Portal público `/`:** cabecera fija con **Agendar**, **Cancelar** y **Llamar**; hero con estado en vivo (abierto o cerrado), frase de impacto y, en escritorio, atajo para elegir servicio. La clienta elige servicio → día → hora → escribe nombre y teléfono, y recibe un ticket con **código QR** y **clave de 6 caracteres** que puede guardar en la galería y confirmar por WhatsApp. Debajo: cómo funciona, reglas (salen de Configuración), horario, contacto y preguntas frecuentes. También puede **cancelar** sus citas con su teléfono.
 - **Panel `/admin`:** Citas, Calendario, Escanear código (cámara o clave), Clientes, Configuración (datos, logo, horarios, servicios, reglas y colores) y **Cuentas** (quién entra al panel; todas con acceso completo).
@@ -92,7 +92,7 @@ npm run dev
 ## Reglas importantes
 
 - **Sin doble reserva:** cada cita guarda los tramos de 15 min que ocupa y un índice único parcial `(date, occupiedTicks)` impide que dos citas activas se pisen, aunque lleguen a la vez (probado con 8 reservas simultáneas). Quien llega segundo recibe `409` y vuelve a elegir hora.
-- Servicios por defecto: Manicura (1 h), Pedicura (1 h), Manicura + pedicura (2 h). Horario por defecto: lunes a sábado 8:30–12:30 y 14:00–19:00, domingo cerrado, horas cada 60 min (se cambia a 30 en «Horas cada»). Todo editable en Configuración.
+- Servicios por defecto: Manicura (1 h), Pedicura (1 h), Manicura + pedicura (2 h). Horario por defecto: lunes a sábado 8:30–12:30 y 14:00–19:00, domingo cerrado, horas cada 30 min (desde el 2026-11-19; una migración única pasó a 30 los días que estaban en 60, y luego se respeta lo que elija la dueña en «Horas cada»). Nombres de servicio hasta 80 caracteres. La página recuerda el nombre y el teléfono de la clienta en su propio dispositivo (`localStorage`, clave `nails-art:contact`, botón «No soy yo» para borrarlos). Todo editable en Configuración.
 - Máximo **3 citas activas** por teléfono; reservas hasta 30 días adelante; el mismo día, con 60 min de antelación.
 - La clienta cancela con su teléfono (debe coincidir con el de la cita) hasta la hora de inicio.
 - «Hoy» lo decide el servidor en `America/Caracas`, nunca el navegador.

@@ -4,7 +4,7 @@ Fecha: 2026-11-16 · Autor: Dev (con Tiago) · Estado: aprobado por Tiago el 202
 
 ## 1. Negocio y objetivo
 
-**Nails Art** (`@nailsart.sc`) es un salón de uñas en San Cristóbal, Táchira (Venezuela), atendido por una manicurista. Hoy agenda por WhatsApp e Instagram.
+**Nails Art** (`@nailsart.sc`) es una manicurista independiente en San Cristóbal, Táchira (Venezuela); no es un salón de belleza (Tiago, 2026-11-19), así que los textos dicen «manicurista», no «salón». Hoy agenda por WhatsApp e Instagram.
 
 Objetivo de la v1: que la clienta reserve sola desde el móvil en menos de un minuto (servicio → día → hora → nombre y teléfono), reciba un ticket con QR y código de 6 caracteres, y que el salón gestione agenda, clientas y asistencia desde un panel.
 
@@ -31,7 +31,7 @@ Tipo: **reservas y agenda**, un solo negocio (no multi-cliente).
 - **Panel `/admin`** con usuario y contraseña y 5 secciones: Configuración, Calendario, Citas, Clientes, Escanear código; más **Cuentas** (2026-11-16).
 - **Alta única del superadmin** en `/admin/setup` (decisión de Tiago, 2026-11-16, ajustada esa misma tarde): ninguna credencial pasa por el chat ni por el código. La página queda **abierta sin clave** hasta que exista la primera cuenta; Tiago la crea nada más desplegar, y desde **Cuentas** crea la de la manicurista. Tiago la creó el 2026-11-16 y el alta se retiró del código ese mismo día; contraseñas de 6+ caracteres (pedido de Tiago).
 - **Modo superadmin oculto (2026-11-17, regla de Tiago para todas sus plataformas):** cuatro toques al título de cualquier sección → clave `1111` → 15 minutos en los que se pueden eliminar para siempre clientas (con todas sus citas) y citas u horarios ocupados. Validado en el servidor, con límite de intentos y auditoría (`purgelogs`).
-- **Landing (2026-11-16):** cabecera fija con Agendar, Cancelar y Llamar; hero con estado abierto/cerrado en vivo y la frase «No existen manos feas, solo uñas sin cita.» (inspirada en la que propuso Tiago); debajo de la reserva: cómo funciona, lo que debes saber (de Configuración), frase destacada, horario, contacto, preguntas frecuentes y llamado final.
+- **Landing (2026-11-16):** cabecera fija con Agendar, Cancelar y Llamar; hero con estado abierto/cerrado en vivo y la frase «Arte y color en cada detalle.» seguida de «Tu momento de consentirte comienza aquí.» en cursiva destacada (cambio de Tiago del 2026-11-19, sugerido por Gemini; antes «No existen manos feas, solo uñas sin cita.»); debajo de la reserva: cómo funciona, lo que debes saber (de Configuración), frase destacada, horario, contacto, preguntas frecuentes y llamado final.
 
 **Fuera de la v1** (se propone, no se construye): precios y cobros, recordatorios automáticos, lista de espera, varias manicuristas, archivo `.ics`, cuentas de clienta, tema oscuro.
 
@@ -57,7 +57,7 @@ El servidor exige la sesión de administración en todas las rutas del panel, en
 **Agenda**
 
 - Una clienta a la vez (capacidad 1).
-- Cada día tiene: abierto o cerrado, hora de apertura y cierre, pausa opcional (almuerzo) y **«Horas cada»** (`slotDurationMinutes`, por defecto 60; con 30 la clienta elige 8:30, 9:00, 9:30…). Las horas de inicio salen cada ese paso desde el inicio de cada turno; cada cita ocupa lo que dura su servicio en tramos de 15 min y tapa las horas que pisa; un servicio solo se ofrece si **cabe entero** en el turno sin cruzar la pausa ni chocar con otra cita.
+- Cada día tiene: abierto o cerrado, hora de apertura y cierre, pausa opcional (almuerzo) y **«Horas cada»** (`slotDurationMinutes`, por defecto 30 desde el 2026-11-19; con 30 la clienta elige 8:30, 9:00, 9:30…). Las horas de inicio salen cada ese paso desde el inicio de cada turno; cada cita ocupa lo que dura su servicio en tramos de 15 min y tapa las horas que pisa; un servicio solo se ofrece si **cabe entero** en el turno sin cruzar la pausa ni chocar con otra cita.
 - Ejemplo con el horario actual y bloque de 60: Manicura → 8:30, 9:30, 10:30, 11:30, 14:00 … 18:00. Manicura + pedicura → 8:30, 9:30, 10:30, 14:00 … 17:00.
 - Reserva hasta **30 días** adelante; hoy, solo horarios que empiecen dentro de 60 min o más (`SUPUESTO`).
 - **Máximo 3 citas activas sin atender por teléfono** (decisión de Tiago).

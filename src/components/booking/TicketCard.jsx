@@ -131,7 +131,7 @@ export function TicketCard({ appointment, settings, onReset, headingRef }) {
         <h2 ref={headingRef} tabIndex={-1} className="section-title outline-none">
           {name ? `¡Listo, ${name}! Tu cita está confirmada` : '¡Listo! Tu cita está confirmada'}
         </h2>
-        <p className="mt-1 text-sm text-ink-2">Guarda tu ticket: lo necesitarás al llegar al salón.</p>
+        <p className="mt-1 text-sm text-ink-2">Guarda tu ticket: lo necesitarás al llegar a tu cita.</p>
       </div>
 
       <article aria-label="Ticket de tu cita" className="glass glass-strong relative mx-auto mt-5 max-w-md overflow-hidden px-5 pb-6 pt-6 sm:px-7">
@@ -182,7 +182,7 @@ export function TicketCard({ appointment, settings, onReset, headingRef }) {
 
         <p className="mt-4 flex items-start gap-2 text-sm text-ink-2">
           <Info aria-hidden="true" className="mt-0.5 h-4 w-4 shrink-0 text-accent-ink" />
-          Muestra este código o el QR al llegar al salón.
+          Muestra este código o el QR al llegar a tu cita.
         </p>
       </article>
 

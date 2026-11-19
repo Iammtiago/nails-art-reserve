@@ -44,7 +44,7 @@ export default function ConfiguracionPage() {
       <PageHeader
         eyebrow="Ajustes"
         title="Configuración"
-        description="Datos del salón, horarios, servicios y colores de tu página de reservas."
+        description="Tus datos, horarios, servicios y colores de tu página de reservas."
         actions={state.data ? <HeaderActions timezone={state.data.timezone} /> : null}
       />
       {state.data ? (

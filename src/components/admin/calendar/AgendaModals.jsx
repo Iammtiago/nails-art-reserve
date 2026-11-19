@@ -219,10 +219,10 @@ function TypedTime({ value, onChange, error, hint }) {
 
 // ---------- Nueva cita ----------
 
-function ManualForm({ initialDate, onDone, onCancel }) {
+function ManualForm({ initialDate, initialTime = null, onDone, onCancel }) {
   const { settings, handleError } = useAdmin();
   const services = (settings?.services || []).filter((s) => s.isActive !== false);
-  const [form, setForm] = useState({ serviceKey: services[0]?.key || '', date: initialDate, timeSlot: '', clientName: '', clientPhone: '' });
+  const [form, setForm] = useState({ serviceKey: services[0]?.key || '', date: initialDate, timeSlot: initialTime || '', clientName: '', clientPhone: '' });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const { occupied, now } = useOccupied(form.date);
@@ -301,7 +301,7 @@ function ManualForm({ initialDate, onDone, onCancel }) {
           hint={chosen !== null ? `De ${formatTime(form.timeSlot)} a ${formatTime(toTime(chosen + duration))}: ese rato queda ocupado.` : 'Por ejemplo 5 : 30 o 6 : 45.'}
         />
       </div>
-      <div className="sticky bottom-0 -mx-1 flex flex-col-reverse gap-2 bg-gradient-to-t from-surface via-surface/95 to-transparent px-1 pt-3 sm:flex-row sm:justify-end">
+      <div className="sticky bottom-0 -mx-1 flex flex-col-reverse gap-2 bg-transparent px-1 pt-3 sm:flex-row sm:justify-end">
         <Button variant="secondary" onClick={onCancel}>
           Cancelar
         </Button>
@@ -338,7 +338,7 @@ function ManualDone({ appointment, onClose }) {
   );
 }
 
-export function ManualAppointmentModal({ open, initialDate, onClose, onCreated }) {
+export function ManualAppointmentModal({ open, initialDate, initialTime = null, onClose, onCreated }) {
   const [done, setDone] = useState(null);
   useEffect(() => {
     if (!open) setDone(null);
@@ -348,6 +348,7 @@ export function ManualAppointmentModal({ open, initialDate, onClose, onCreated }
       {open && !done ? (
         <ManualForm
           initialDate={initialDate}
+          initialTime={initialTime}
           onCancel={onClose}
           onDone={(appointment) => {
             setDone(appointment);
@@ -362,10 +363,16 @@ export function ManualAppointmentModal({ open, initialDate, onClose, onCreated }
 
 // ---------- Ocupar horario ----------
 
-function BlockForm({ initialDate, onDone, onCancel }) {
+function BlockForm({ initialDate, initialTime = null, onDone, onCancel }) {
   const { handleError } = useAdmin();
   const toast = useToast();
-  const [form, setForm] = useState({ date: initialDate, start: '', end: '', reason: '' });
+  const [form, setForm] = useState(() => ({
+    date: initialDate,
+    start: initialTime || '',
+    // One hour by default, never past midnight.
+    end: initialTime ? toTime(Math.min(toMinutes(initialTime) + 60, 23 * 60 + 45)) : '',
+    reason: '',
+  }));
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const { occupied, now } = useOccupied(form.date);
@@ -418,7 +425,7 @@ function BlockForm({ initialDate, onDone, onCancel }) {
         {(p) => <Input {...p} value={form.reason} maxLength={LIMITS.blockReasonMax} onChange={(e) => set('reason', e.target.value)} placeholder="Almuerzo, diligencia…" autoComplete="off" />}
       </Field>
       <p className="text-xs text-ink-3">Las clientas no podrán reservar en ese rango. Para cerrar el día entero, usa «Bloquear día» al tocar el día en el calendario.</p>
-      <div className="sticky bottom-0 -mx-1 flex flex-col-reverse gap-2 bg-gradient-to-t from-surface via-surface/95 to-transparent px-1 pt-3 sm:flex-row sm:justify-end">
+      <div className="sticky bottom-0 -mx-1 flex flex-col-reverse gap-2 bg-transparent px-1 pt-3 sm:flex-row sm:justify-end">
         <Button variant="secondary" onClick={onCancel}>
           Cancelar
         </Button>
@@ -430,12 +437,13 @@ function BlockForm({ initialDate, onDone, onCancel }) {
   );
 }
 
-export function TimeBlockModal({ open, initialDate, onClose, onCreated }) {
+export function TimeBlockModal({ open, initialDate, initialTime = null, onClose, onCreated }) {
   return (
     <Modal open={open} onClose={onClose} title="Ocupar horario" description="Reserva un rango del día para ti." size="sm" placement="top">
       {open ? (
         <BlockForm
           initialDate={initialDate}
+          initialTime={initialTime}
           onCancel={onClose}
           onDone={(block) => {
             onCreated?.(block);

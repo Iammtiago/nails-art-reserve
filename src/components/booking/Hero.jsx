@@ -47,7 +47,8 @@ function SampleQr() {
 /** Desktop-only composition: a sample ticket behind a quick «pick your service» card. */
 function HeroVisual({ settings, onPickService }) {
   const services = settings.services || [];
-  const sample = services[0]?.name || 'Manicura';
+  // The sample ticket shows the shortest service name, so it reads whole.
+  const sample = services.reduce((best, s) => (!best || s.name.length < best.length ? s.name : best), '') || 'Manicura';
   return (
     <div className="relative mx-auto hidden w-full max-w-[440px] lg:block">
       <div
@@ -75,30 +76,30 @@ function HeroVisual({ settings, onPickService }) {
       </div>
 
       {/* Quick pick: the featured card, on the deep surface. */}
-      <div className="glass-deep relative mr-10 mt-40 -rotate-1 p-5">
+      <div className="glass-deep relative mr-4 mt-40 -rotate-1 p-5">
         <p className="eyebrow !text-secondary">¿Qué te haces hoy?</p>
         <p className="text-on-deep-2 mt-1 text-sm">Toca un servicio y elige tu hora.</p>
         <ul className="mt-4 space-y-2">
-          {services.slice(0, 5).map((service) => {
+          {services.slice(0, 6).map((service) => {
             const Icon = serviceIcon(service);
             return (
               <li key={service.key}>
                 <button
                   type="button"
                   onClick={() => onPickService(service)}
-                  className="group flex min-h-[52px] w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.07] px-3 text-left transition hover:-translate-y-px hover:border-white/25 hover:bg-white/[0.14]"
+                  className="group flex min-h-[52px] w-full items-center gap-3 rounded-2xl py-2 border border-white/10 bg-white/[0.07] px-3 text-left transition hover:-translate-y-px hover:border-white/25 hover:bg-white/[0.14]"
                 >
                   <span className="tile-on-deep h-9 w-9" aria-hidden="true">
                     <Icon className="h-[18px] w-[18px]" />
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-sm font-semibold text-white">{service.name}</span>
+                    <span className="line-clamp-2 text-sm font-semibold leading-snug text-white" title={service.name}>{service.name}</span>
                     <span className="text-on-deep-2 flex items-center gap-1 text-xs">
                       <Clock aria-hidden="true" className="h-3 w-3" />
                       {formatDuration(service.durationMinutes)}
                     </span>
                   </span>
-                  <span className="text-xs font-semibold text-secondary opacity-0 transition group-hover:opacity-100 group-focus-visible:opacity-100">Reservar</span>
+                  <span className="sr-only">: reservar</span>
                   <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-white/60 transition group-hover:translate-x-0.5 group-hover:text-white" />
                 </button>
               </li>
@@ -129,13 +130,13 @@ function QuickPickStrip({ services, onPickService }) {
               <button
                 type="button"
                 onClick={() => onPickService(service)}
-                className="flex min-h-[52px] w-full items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.07] px-3 text-left transition active:scale-[0.99] hover:bg-white/[0.14]"
+                className="flex min-h-[52px] w-full items-center gap-3 rounded-2xl py-2 border border-white/10 bg-white/[0.07] px-3 text-left transition active:scale-[0.99] hover:bg-white/[0.14]"
               >
                 <span className="tile-on-deep h-9 w-9" aria-hidden="true">
                   <Icon className="h-[18px] w-[18px]" />
                 </span>
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold text-white">{service.name}</span>
+                  <span className="line-clamp-2 text-sm font-semibold leading-snug text-white" title={service.name}>{service.name}</span>
                   <span className="text-on-deep-2 block text-xs">{formatDuration(service.durationMinutes)}</span>
                 </span>
                 <ChevronRight aria-hidden="true" className="h-4 w-4 shrink-0 text-white/60" />

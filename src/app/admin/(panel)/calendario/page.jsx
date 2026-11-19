@@ -32,6 +32,12 @@ export default function CalendarioPage() {
   const [view, setView] = useState('week');
   const [anchor, setAnchor] = useState(null);
   const [openDate, setOpenDate] = useState(null);
+  // Half hour tapped in the week grid (null from the day header, month or agenda).
+  const [openTime, setOpenTime] = useState(null);
+  const openDayAt = useCallback((date, time = null) => {
+    setOpenDate(date);
+    setOpenTime(time);
+  }, []);
   const [selected, setSelected] = useState(null);
   // { type: 'appointment' | 'block', date } — only one form open at a time, never on top of the day panel.
   const [form, setForm] = useState(null);
@@ -86,9 +92,10 @@ export default function CalendarioPage() {
   );
   const actions = useAppointmentActions(handleAppointmentChanged);
 
-  const openForm = (type, date) => {
+  const openForm = (type, date, time = null) => {
     setOpenDate(null);
-    setForm({ type, date: date && today && date >= today ? date : today });
+    const valid = date && today && date >= today;
+    setForm({ type, date: valid ? date : today, time: valid ? time : null });
   };
 
   const go = (step) => {
@@ -111,7 +118,7 @@ export default function CalendarioPage() {
     content =
       view === 'month' ? (
         <>
-          <MonthGrid days={days} monthKey={monthKey} today={today} onOpenDay={setOpenDate} />
+          <MonthGrid days={days} monthKey={monthKey} today={today} onOpenDay={openDayAt} />
           <CalendarLegend />
         </>
       ) : (
@@ -122,7 +129,7 @@ export default function CalendarioPage() {
             workingHours={workingHours}
             now={data.now}
             today={today}
-            onOpenDay={setOpenDate}
+            onOpenDay={openDayAt}
             onOpenAppointment={setSelected}
           />
           <WeekAgenda
@@ -130,7 +137,7 @@ export default function CalendarioPage() {
             appointments={appointments}
             workingHours={workingHours}
             today={today}
-            onOpenDay={setOpenDate}
+            onOpenDay={openDayAt}
             onOpenAppointment={setSelected}
           />
         </>
@@ -174,21 +181,23 @@ export default function CalendarioPage() {
           appointments={byDate.get(openDay.date) || EMPTY}
           workingHours={workingHours}
           isToday={openDay.date === today}
+          time={openTime}
           onClose={() => setOpenDate(null)}
           onOpenAppointment={setSelected}
           onChanged={() => reload({ silent: true })}
-          onNewAppointment={() => openForm('appointment', openDay.date)}
-          onBlockTime={() => openForm('block', openDay.date)}
+          onNewAppointment={() => openForm('appointment', openDay.date, openTime)}
+          onBlockTime={() => openForm('block', openDay.date, openTime)}
         />
       ) : null}
 
       <ManualAppointmentModal
         open={form?.type === 'appointment'}
         initialDate={form?.date}
+        initialTime={form?.time}
         onClose={() => setForm(null)}
         onCreated={() => reload({ silent: true })}
       />
-      <TimeBlockModal open={form?.type === 'block'} initialDate={form?.date} onClose={() => setForm(null)} onCreated={() => reload({ silent: true })} />
+      <TimeBlockModal open={form?.type === 'block'} initialDate={form?.date} initialTime={form?.time} onClose={() => setForm(null)} onCreated={() => reload({ silent: true })} />
 
       {selected ? (
         <AppointmentDetailModal

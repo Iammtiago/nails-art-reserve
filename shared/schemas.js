@@ -162,6 +162,12 @@ export const adminAppointmentsQuerySchema = z.object({
   limit: limitParam,
 });
 
+/** Editing a client from the panel: her name and phone. */
+export const clientUpdateSchema = z.strictObject({
+  name: clientNameField,
+  phone: phoneField,
+});
+
 export const adminClientsQuerySchema = z.object({
   q: searchParam,
   page: pageParam,

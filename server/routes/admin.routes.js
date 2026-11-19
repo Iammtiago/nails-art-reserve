@@ -7,6 +7,7 @@ import {
   blockDateSchema,
   calendarQuerySchema,
   changePasswordSchema,
+  clientUpdateSchema,
   dateParamSchema,
   idParamSchema,
   superKeySchema,
@@ -22,7 +23,7 @@ function publicBaseUrl(req) {
   return env().appUrl || `${req.protocol}://${req.get('host')}`;
 }
 import { addBlockedDate, getCalendar, removeBlockedDate } from '../services/calendar.service.js';
-import { listClients } from '../services/client.service.js';
+import { listClients, updateClient } from '../services/client.service.js';
 import { lockSuper, purgeAppointment, purgeClient, requireSuper, superStatus, unlockSuper } from '../services/super.service.js';
 import { getSettingsDoc, toAdminSettings } from '../services/settings.service.js';
 
@@ -63,6 +64,10 @@ adminRouter.patch('/appointments/:id/cancel', validate(idParamSchema, 'params'),
 
 adminRouter.get('/clients', validate(adminClientsQuerySchema, 'query'), async (req, res) => {
   res.json(await listClients(req.valid.query));
+});
+
+adminRouter.patch('/clients/:id', validate(idParamSchema, 'params'), validate(clientUpdateSchema), async (req, res) => {
+  res.json({ client: await updateClient(req.valid.params.id, req.valid.body) });
 });
 
 adminRouter.get('/calendar', validate(calendarQuerySchema, 'query'), async (req, res) => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, Plus } from 'lucide-react';
 import { useMemo } from 'react';
 import { formatDateLong, formatTimeRange } from '@shared/format.js';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
@@ -64,8 +64,16 @@ function AgendaDay({ day, items, isToday, workingHours, index, onOpenDay, onOpen
               </li>
             ))}
           </ul>
-        ) : state === 'open' ? (
-          <p className="mt-2 text-sm text-ink-3">Sin citas</p>
+        ) : null}
+        {state !== 'blocked' ? (
+          <button
+            type="button"
+            onClick={() => onOpenDay(day.date)}
+            className="mt-2 flex min-h-[44px] w-full items-center justify-center gap-1.5 rounded-xl border border-dashed border-line text-sm font-semibold text-primary-ink transition hover:border-secondary hover:bg-surface/60"
+          >
+            <Plus aria-hidden="true" className="h-4 w-4" />
+            {items.length ? 'Agendar u ocupar horas' : 'Sin citas · Agendar u ocupar horas'}
+          </button>
         ) : null}
       </section>
     </li>

@@ -3,7 +3,7 @@
 import { ClientActions, ClientAvatar, ClientTag, DateOrDash, PhoneText } from './ClientBits';
 import { staggerDelay } from './clientUtils';
 
-function ClientRow({ client, index, businessName, onCopy, onDeleted }) {
+function ClientRow({ client, index, businessName, onCopy, onEdit, onDeleted }) {
   return (
     <tr className="enter transition-colors hover:bg-surface/70" style={staggerDelay(index, 30)}>
       {/* w-full + max-w-0 lets the name truncate while the other columns keep their width. */}
@@ -32,14 +32,14 @@ function ClientRow({ client, index, businessName, onCopy, onDeleted }) {
         <DateOrDash date={client.lastVisitDate} />
       </td>
       <td className="py-2 pl-2 pr-4">
-        <ClientActions client={client} businessName={businessName} onCopy={onCopy} onDeleted={onDeleted} compact />
+        <ClientActions client={client} businessName={businessName} onCopy={onCopy} onEdit={onEdit} onDeleted={onDeleted} compact />
       </td>
     </tr>
   );
 }
 
 /** Desktop directory (lg and up). */
-export function ClientsTable({ items, businessName, onCopy, onDeleted }) {
+export function ClientsTable({ items, businessName, onCopy, onEdit, onDeleted }) {
   return (
     <div className="glass enter hidden overflow-hidden lg:block" style={{ animationDelay: '120ms' }}>
       <div className="overflow-x-auto">
@@ -72,7 +72,7 @@ export function ClientsTable({ items, businessName, onCopy, onDeleted }) {
           </thead>
           <tbody className="divide-y divide-line">
             {items.map((client, index) => (
-              <ClientRow key={client.id} client={client} index={index} businessName={businessName} onCopy={onCopy} onDeleted={onDeleted} />
+              <ClientRow key={client.id} client={client} index={index} businessName={businessName} onCopy={onCopy} onEdit={onEdit} onDeleted={onDeleted} />
             ))}
           </tbody>
         </table>

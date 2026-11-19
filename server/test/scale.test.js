@@ -273,3 +273,42 @@ describe('one-time move to starts every 30 minutes', () => {
     assert.equal(again.body.settings.workingHours.find((d) => d.dayOfWeek === 6).slotDurationMinutes, 60, 'the migration runs only once');
   });
 });
+
+describe('editing a client from the panel', () => {
+  beforeEach(resetData);
+
+  it('renames and moves her phone, and her appointments follow', async () => {
+    const agent = await loginAgent();
+    await setupLikeProduction(agent);
+    const book = (body) => request(app).post('/api/appointments').set(CSRF).send({ serviceKey: 'manicura', date: '2026-11-21', ...body });
+    assert.equal((await book({ timeSlot: '07:00', clientName: 'Test Orange', clientPhone: '0414 111 0001' })).status, 201);
+    assert.equal((await book({ timeSlot: '09:00', clientName: 'Test Lila', clientPhone: '0414 111 0002' })).status, 201);
+
+    const list = await agent.get('/api/admin/clients');
+    const orange = list.body.items.find((c) => c.name === 'Test Orange');
+
+    const res = await agent.patch(`/api/admin/clients/${orange.id}`).set(CSRF).send({ name: '  María   Orange ', phone: '0424 999 0001' });
+    assert.equal(res.status, 200, JSON.stringify(res.body));
+    assert.equal(res.body.client.name, 'María Orange');
+    assert.equal(res.body.client.phone, '584249990001');
+
+    // Her booking now answers to the new number, with the new name; the old number finds nothing.
+    const byNew = await request(app).get('/api/appointments/by-phone/04249990001');
+    assert.equal(byNew.body.appointments.length, 1);
+    assert.equal(byNew.body.appointments[0].clientFirstName, 'María');
+    const byOld = await request(app).get('/api/appointments/by-phone/04141110001');
+    assert.equal(byOld.body.appointments.length, 0);
+
+    // Another client's phone is refused on the phone field.
+    const taken = await agent.patch(`/api/admin/clients/${orange.id}`).set(CSRF).send({ name: 'María Orange', phone: '0414 111 0002' });
+    assert.equal(taken.status, 409);
+    assert.equal(taken.body.details[0].path, 'phone');
+
+    const bad = await agent.patch(`/api/admin/clients/${orange.id}`).set(CSRF).send({ name: 'M4', phone: '12' });
+    assert.equal(bad.status, 422);
+    const missing = await agent.patch('/api/admin/clients/0123456789abcdef01234567').set(CSRF).send({ name: 'Nadie Aquí', phone: '0414 000 0000' });
+    assert.equal(missing.status, 404);
+    const anonymous = await request(app).patch(`/api/admin/clients/${orange.id}`).set(CSRF).send({ name: 'X Y Z', phone: '0414 000 0000' });
+    assert.equal(anonymous.status, 401);
+  });
+});

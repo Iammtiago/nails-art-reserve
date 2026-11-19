@@ -72,7 +72,9 @@ export function DateTimeStep({ service, date, time, onDateChange, onTimeChange, 
   );
   const reloadAvailability = availability.reload;
 
-  // Keep the chosen date valid; otherwise preselect the first available one.
+  // Keep the chosen date valid; otherwise preselect the first day with free times (usually
+  // today, or tomorrow once today's agenda is full or over). Also re-runs when the date is
+  // cleared while this step stays open (hero quick-pick, same service again).
   const daysData = days.data;
   useEffect(() => {
     if (!daysData) return;
@@ -82,10 +84,10 @@ export function DateTimeStep({ service, date, time, onDateChange, onTimeChange, 
       return;
     }
     const first = daysData.days.find((d) => d.status === 'available');
-    onDateChange(first ? first.date : null);
+    if ((first?.date ?? null) !== date) onDateChange(first ? first.date : null);
     setMonth(startOfMonth(first ? first.date : daysData.from));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [daysData]);
+  }, [daysData, date]);
 
   // Someone else may book the chosen time while this step is open.
   const slotsData = availability.data;

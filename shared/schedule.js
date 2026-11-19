@@ -115,8 +115,8 @@ export function checkSlot({ settings, date, time, durationMinutes, occupied, now
 export const DATE_REASON_LABELS = Object.freeze({
   past: 'Esa fecha ya pasó.',
   out_of_window: 'Esa fecha está fuera del rango de reservas.',
-  blocked: 'Ese día el salón no atiende.',
-  closed: 'Ese día el salón está cerrado.',
+  blocked: 'Ese día no hay atención.',
+  closed: 'Ese día no se atiende.',
   full: 'Ese día ya no quedan horarios libres.',
   ended: 'Por hoy ya no quedan horarios.',
 });

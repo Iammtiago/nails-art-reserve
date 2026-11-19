@@ -126,7 +126,7 @@ export default function CitasPage() {
       <PageHeader
         eyebrow={today ? formatDateLong(today) : undefined}
         title="Citas"
-        description="Agenda del salón: confirma asistencias, cancela o escribe a tus clientas."
+        description="Tu agenda: confirma asistencias, cancela o escribe a tus clientas."
         actions={
           <Button icon={CalendarPlus} onClick={() => setCreating(true)} disabled={!today}>
             Nueva cita

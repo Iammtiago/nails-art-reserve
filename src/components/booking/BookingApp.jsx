@@ -74,7 +74,7 @@ function SettingsGate() {
   const state = useAsync(
     (signal) =>
       apiGet('/api/settings', null, { signal }).then((r) => {
-        if (!r?.settings) throw new ApiError(503, { error: 'No pudimos cargar la información del salón. Intenta de nuevo.' });
+        if (!r?.settings) throw new ApiError(503, { error: 'No pudimos cargar la información de la agenda. Intenta de nuevo.' });
         return r.settings;
       }),
     [],

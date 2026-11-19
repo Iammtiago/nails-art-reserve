@@ -94,7 +94,7 @@ export function AppointmentDetailModal({ appointment, onClose, today, timezone, 
       title={appointment.clientName}
       description={
         appointment.kind === 'block'
-          ? `Horario reservado por el salón · ${formatDuration(appointment.durationMinutes)}`
+          ? `Horario que reservaste para ti · ${formatDuration(appointment.durationMinutes)}`
           : `${appointment.serviceName} · ${formatDuration(appointment.durationMinutes)}`
       }
       footer={

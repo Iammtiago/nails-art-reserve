@@ -290,11 +290,11 @@ export function validateDraft(draft) {
   };
 
   const name = collapseSpaces(draft.businessName);
-  if (name.length < 2) add('businessName', 'Escribe el nombre del salón (mínimo 2 caracteres).');
+  if (name.length < 2) add('businessName', 'Escribe el nombre del negocio (mínimo 2 caracteres).');
   else if (name.length > LIMITS.businessNameMax) add('businessName', `Máximo ${LIMITS.businessNameMax} caracteres.`);
 
   const phone = String(draft.phone ?? '').trim();
-  if (!phone) add('phone', 'Escribe el WhatsApp del salón.');
+  if (!phone) add('phone', 'Escribe tu WhatsApp.');
   else if (!normalizePhone(phone)) add('phone', 'Revisa el número: por ejemplo 0414 123 4567 o +58 414 123 4567.');
 
   const instagram = String(draft.instagramUrl ?? '').trim();

@@ -36,11 +36,11 @@ export function BusinessSection({ businessName, phone, instagramUrl, errors, onC
       id="negocio"
       icon={Store}
       title="Negocio"
-      description="Así se presenta el salón en la página de reservas, el ticket y los mensajes."
+      description="Así te presentas en la página de reservas, el ticket y los mensajes."
       delay={delay}
     >
       <div className="space-y-4">
-        <Field label="Nombre del salón" required error={errors.businessName}>
+        <Field label="Nombre del negocio" required error={errors.businessName}>
           {(p) => (
             <Input
               {...p}
@@ -109,7 +109,7 @@ export function BusinessSection({ businessName, phone, instagramUrl, errors, onC
                 value={instagramUrl}
                 onChange={(event) => onChange('instagramUrl', event.target.value)}
                 maxLength={200}
-                placeholder="https://www.instagram.com/tu-salon"
+                placeholder="https://www.instagram.com/tu-negocio"
                 className="pl-11"
               />
             </div>

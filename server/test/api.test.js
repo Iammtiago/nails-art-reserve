@@ -48,12 +48,13 @@ describe('public settings and availability', () => {
     assert.equal(one.status, 200);
     assert.deepEqual(
       one.body.slots.map((s) => s.time),
-      ['08:30', '09:30', '10:30', '11:30', '14:00', '15:00', '16:00', '17:00', '18:00'],
+      // Starts every 30 minutes (Tiago, 2026-11-19); each one still needs the whole hour free.
+      ['08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '11:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00', '17:30', '18:00'],
     );
     const two = await request(app).get(`/api/appointments/availability?date=${SATURDAY}&service=manicura-pedicura`);
     assert.deepEqual(
       two.body.slots.map((s) => s.time),
-      ['08:30', '09:30', '10:30', '14:00', '15:00', '16:00', '17:00'],
+      ['08:30', '09:00', '09:30', '10:00', '10:30', '14:00', '14:30', '15:00', '15:30', '16:00', '16:30', '17:00'],
     );
   });
 
@@ -231,7 +232,7 @@ describe('admin', () => {
 
     const avail = await request(app).get(`/api/appointments/availability?date=${SATURDAY}&service=manicura`);
     const taken = avail.body.slots.filter((s) => !s.available).map((s) => s.time);
-    assert.deepEqual(taken, ['10:30', '11:30']);
+    assert.deepEqual(taken, ['10:00', '10:30', '11:00', '11:30'], '10:00 + 1 h would run into the block');
     assert.equal((await book(booking({ timeSlot: '10:30' }))).status, 409);
 
     const clash = await agent.post('/api/admin/time-blocks').set(CSRF).send({ date: SATURDAY, start: '11:00', end: '11:30' });

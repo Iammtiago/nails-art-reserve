@@ -36,7 +36,7 @@ export const LIMITS = Object.freeze({
   businessNameMax: 60,
   clientNameMin: 3,
   clientNameMax: 80,
-  serviceNameMax: 40,
+  serviceNameMax: 80,
   servicesMax: 12,
   blockReasonMax: 80,
   logoDataUrlMaxChars: 2_800_000, // ~2 MB of image once decoded
@@ -70,12 +70,12 @@ const weekday = (dayOfWeek) => ({
   closeTime: '19:00',
   breakStart: '12:30',
   breakEnd: '14:00',
-  slotDurationMinutes: 60,
+  slotDurationMinutes: 30,
 });
 
 /** Lunes a sábado 8:30–12:30 y 14:00–19:00; domingo cerrado (Instagram @nailsart.sc). */
 export const DEFAULT_WORKING_HOURS = Object.freeze([
-  { dayOfWeek: 0, isOpen: false, openTime: '08:30', closeTime: '19:00', breakStart: '', breakEnd: '', slotDurationMinutes: 60 },
+  { dayOfWeek: 0, isOpen: false, openTime: '08:30', closeTime: '19:00', breakStart: '', breakEnd: '', slotDurationMinutes: 30 },
   weekday(1),
   weekday(2),
   weekday(3),

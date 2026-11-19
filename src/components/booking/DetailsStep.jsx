@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, CalendarCheck, CalendarDays, Clock, ListChecks, Pencil, ShieldCheck } from 'lucide-react';
+import { AlertTriangle, CalendarCheck, CalendarDays, Clock, ListChecks, Pencil, ShieldCheck, UserRoundCheck } from 'lucide-react';
 import { useRef, useState } from 'react';
 import { formatDateLong, formatTimeRange } from '@shared/format.js';
 import { PHONE_HINT } from '@shared/phone.js';
@@ -52,7 +52,7 @@ function SummaryCard({ service, date, time, onEdit }) {
   );
 }
 
-export function DetailsStep({ service, date, time, contact, onContactChange, onEdit, onBooked, onSlotTaken, onOpenCancel, headingRef }) {
+export function DetailsStep({ service, date, time, contact, onContactChange, remembered = false, onForget, onEdit, onBooked, onSlotTaken, onOpenCancel, headingRef }) {
   const toast = useToast();
   const [errors, setErrors] = useState({});
   const [notice, setNotice] = useState('');
@@ -132,6 +132,17 @@ export function DetailsStep({ service, date, time, contact, onContactChange, onE
       <SummaryCard service={service} date={date} time={time} onEdit={onEdit} />
 
       <form onSubmit={submit} noValidate className="relative mt-5 space-y-4">
+        {remembered && (contact.clientName || contact.clientPhone) ? (
+          <div className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1 rounded-2xl bg-accent-soft/70 px-4 py-2.5 text-sm text-ink-2">
+            <p className="flex min-w-0 basis-52 flex-1 items-center gap-2">
+              <UserRoundCheck aria-hidden="true" className="h-4 w-4 shrink-0 text-accent-ink" />
+              Pusimos tus datos de la última vez. Revísalos y confirma.
+            </p>
+            <button type="button" onClick={onForget} className="min-h-[44px] shrink-0 rounded-lg px-1 font-semibold text-primary-ink underline-offset-2 hover:underline">
+              No soy yo
+            </button>
+          </div>
+        ) : null}
         <Field label="Nombre completo" error={errors.clientName} required>
           {(p) => (
             <Input
@@ -198,7 +209,7 @@ export function DetailsStep({ service, date, time, contact, onContactChange, onE
           </Button>
           <p className="mt-2.5 flex items-center justify-center gap-1.5 text-center text-xs text-ink-3">
             <ShieldCheck aria-hidden="true" className="h-3.5 w-3.5 shrink-0" />
-            Usamos tu teléfono solo para esta cita.
+            Usamos tu teléfono solo para tus citas. Tus datos quedan guardados en este dispositivo para la próxima vez.
           </p>
         </div>
       </form>

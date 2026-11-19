@@ -129,3 +129,16 @@ export function guessMeridiem(text) {
   const h = Number(/^\s*(\d{1,2})/.exec(String(text ?? ''))?.[1]);
   return h >= 7 && h <= 11 ? 'am' : 'pm';
 }
+
+/** Hour (1-12) and minutes as two numeric fields -> 'HH:mm', or an error text. */
+export function partsToTime(hour, minute, meridiem, tick = 15) {
+  if (!hour && !minute) return { time: '', error: null };
+  const h = Number(hour);
+  if (!hour || !Number.isInteger(h) || h < 1 || h > 12) return { time: '', error: 'La hora va de 1 a 12.' };
+  if (!minute) return { time: '', error: 'Escribe los minutos (00, 15, 30 o 45).' };
+  const m = Number(minute);
+  if (!Number.isInteger(m) || m > 59) return { time: '', error: 'Los minutos van de 00 a 59.' };
+  if (m % tick !== 0) return { time: '', error: `Usa tramos de ${tick} minutos: 00, 15, 30 o 45.` };
+  const h24 = meridiem === 'am' ? h % 12 : (h % 12) + 12;
+  return { time: toTime(h24 * 60 + m), error: null };
+}

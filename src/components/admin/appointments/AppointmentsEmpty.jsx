@@ -9,7 +9,7 @@ const COPY = {
   today: { icon: CalendarCheck, title: 'No hay citas para hoy', description: 'Cuando alguien reserve para hoy, la verás aquí.' },
   upcoming: { icon: CalendarClock, title: 'No hay citas próximas', description: 'Las nuevas reservas aparecerán aquí; la lista se actualiza sola.' },
   completed: { icon: CheckCircle2, title: 'Aún no hay asistencias', description: 'Marca «Asistió» cuando una clienta llegue, o escanea su código.' },
-  cancelled: { icon: CircleX, title: 'No hay citas canceladas', description: 'Aquí verás las citas que se cancelen, por la clienta o por el salón.' },
+  cancelled: { icon: CircleX, title: 'No hay citas canceladas', description: 'Aquí verás las citas que se cancelen, por la clienta o por ti.' },
   all: { icon: Inbox, title: 'Todavía no hay citas', description: 'Comparte tu página de reservas para recibir las primeras.' },
 };
 

@@ -9,7 +9,7 @@ import { DEFAULT_LOGO } from './configModel';
 import { LOGO_ACCEPT, LogoError, dataUrlKilobytes, processLogoFile } from './logoImage';
 
 function logoSourceLabel(logoUrl) {
-  if (!logoUrl || logoUrl === DEFAULT_LOGO) return 'Logo original del salón';
+  if (!logoUrl || logoUrl === DEFAULT_LOGO) return 'Logo original de Nails Art';
   if (logoUrl.startsWith('data:')) return `Imagen subida · ${dataUrlKilobytes(logoUrl)} KB`;
   if (logoUrl.startsWith('https://')) return 'Imagen desde un enlace externo';
   return 'Imagen del sitio';

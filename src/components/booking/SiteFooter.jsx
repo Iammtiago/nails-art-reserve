@@ -26,7 +26,7 @@ export function SiteFooter({ settings }) {
             </p>
           </div>
         </div>
-        <nav aria-label="Contacto del salón" className="-mx-2 flex flex-wrap items-center justify-center gap-1">
+        <nav aria-label="Contacto" className="-mx-2 flex flex-wrap items-center justify-center gap-1">
           {handle ? (
             <a href={settings.instagramUrl} target="_blank" rel="noopener noreferrer" className={LINK}>
               <InstagramGlyph className="h-4 w-4" />

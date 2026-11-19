@@ -27,7 +27,7 @@ export function formatInstant(value, timezone) {
   }
 }
 
-const CANCELLED_BY = { client: 'la clienta', admin: 'el salón' };
+const CANCELLED_BY = { client: 'la clienta', admin: 'la manicurista' };
 
 export function cancelledByLabel(by) {
   return CANCELLED_BY[by] || '';

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Field';
 import { PasswordInput } from '@/components/ui/PasswordInput';
 import { ErrorState } from '@/components/ui/States';
+import { AdminBadge } from '@/components/admin/AdminBadge';
 
 export function LoginScreen({ statusError, onRetry, onSuccess }) {
   const [form, setForm] = useState({ username: '', password: '' });
@@ -69,6 +70,7 @@ export function LoginScreen({ statusError, onRetry, onSuccess }) {
               <div className="mb-6 flex flex-col items-center text-center">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img src="/logo.png" alt="Logo de Nails Art" width={84} height={84} className="mb-4 h-[84px] w-[84px] rounded-full shadow-lift ring-4 ring-white/80" />
+                <AdminBadge className="mb-3" />
                 <p className="eyebrow">Panel de administración</p>
                 <h1 className="mt-1 font-display text-2xl font-semibold sm:text-3xl">Hola de nuevo</h1>
                 <p className="mt-1 text-sm text-ink-2">Entra para gestionar citas, clientas y horarios.</p>

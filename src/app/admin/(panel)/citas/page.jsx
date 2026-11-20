@@ -16,6 +16,7 @@ import { AppointmentsEmpty } from '@/components/admin/appointments/AppointmentsE
 import { AppointmentStats } from '@/components/admin/appointments/AppointmentStats';
 import { useAppointmentActions } from '@/components/admin/appointments/useAppointmentActions';
 import { PageHeader, Pagination } from '@/components/ui/Controls';
+import { AdminBadge } from '@/components/admin/AdminBadge';
 import { ErrorState, LoadingState } from '@/components/ui/States';
 
 const PAGE_SIZE = 20;
@@ -123,6 +124,7 @@ export default function CitasPage() {
 
   return (
     <div className="mx-auto w-full max-w-6xl">
+      <AdminBadge className="mb-3" />
       <PageHeader
         eyebrow={today ? formatDateLong(today) : undefined}
         title="Citas"

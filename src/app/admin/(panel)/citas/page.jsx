@@ -2,7 +2,7 @@
 
 import { CalendarPlus } from 'lucide-react';
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { ManualAppointmentModal } from '@/components/admin/calendar/AgendaModals';
+import { ManualAppointmentModal, RescheduleModal } from '@/components/admin/calendar/AgendaModals';
 import { Button } from '@/components/ui/Button';
 import { formatDateLong } from '@shared/format.js';
 import { isValidDate } from '@shared/time.js';
@@ -32,6 +32,12 @@ export default function CitasPage() {
   const [date, setDate] = useState('');
   const [selected, setSelected] = useState(null);
   const [creating, setCreating] = useState(false);
+  // Appointment being moved; the detail closes first so only one dialog is open.
+  const [moving, setMoving] = useState(null);
+  const startReschedule = useCallback((appointment) => {
+    setSelected(null);
+    setMoving(appointment);
+  }, []);
   const listTopRef = useRef(null);
 
   const q = useDebouncedValue(search.trim(), 300);
@@ -99,6 +105,7 @@ export default function CitasPage() {
         onOpen={setSelected}
         onComplete={actions.complete}
         onCancel={actions.cancel}
+        onReschedule={startReschedule}
         onPurged={(a) => handleChanged(null, a.id)}
       />
     );
@@ -161,9 +168,11 @@ export default function CitasPage() {
           disabled={Boolean(actions.busy)}
           onComplete={actions.complete}
           onCancel={actions.cancel}
+          onReschedule={startReschedule}
           onPurged={(a) => handleChanged(null, a.id)}
         />
       ) : null}
+      <RescheduleModal appointment={moving} onClose={() => setMoving(null)} onDone={() => reload({ silent: true })} />
     </div>
   );
 }

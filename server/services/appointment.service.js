@@ -6,7 +6,7 @@ import { AppError, conflict, isDuplicateKey, notFound, unprocessable } from '../
 import { generateQrDataUrl, verificationUrl } from '../lib/qr.js';
 import { Appointment } from '../models/index.js';
 import { findActiveService, occupiedTicksOn } from './availability.service.js';
-import { recordBooking, recordVisit } from './client.service.js';
+import { recordBooking, recordReschedule, recordVisit } from './client.service.js';
 import { businessNow, getSettingsDoc } from './settings.service.js';
 
 const MAX_CODE_ATTEMPTS = 6;
@@ -37,7 +37,10 @@ export function serializeForPhoneLookup(a) {
   return {
     id: String(a._id),
     clientFirstName: String(a.clientName).split(' ')[0],
+    // serviceKey and duration let the portal look up free times to reschedule.
+    serviceKey: a.serviceKey,
     serviceName: a.serviceName,
+    durationMinutes: a.durationMinutes,
     date: a.date,
     timeSlot: a.timeSlot,
     endTime: a.endTime,
@@ -63,6 +66,10 @@ export function serializeForAdmin(a) {
     cancelledAt: a.cancelledAt || null,
     cancelledBy: a.cancelledBy || null,
     completedAt: a.completedAt || null,
+    rescheduledAt: a.rescheduledAt || null,
+    rescheduledBy: a.rescheduledBy || null,
+    previousDate: a.previousDate || null,
+    previousTimeSlot: a.previousTimeSlot || null,
     createdAt: a.createdAt,
   };
 }
@@ -270,7 +277,7 @@ export async function listActiveByPhone(phone) {
   const now = businessNow(settings);
   const rows = await Appointment.find(
     { clientPhone: phone, status: APPOINTMENT_STATUS.CONFIRMED, date: { $gte: now.date } },
-    { clientName: 1, serviceName: 1, date: 1, timeSlot: 1, endTime: 1, status: 1 },
+    { clientName: 1, serviceKey: 1, serviceName: 1, durationMinutes: 1, date: 1, timeSlot: 1, endTime: 1, status: 1 },
   )
     .sort({ date: 1, timeSlot: 1 })
     .lean();
@@ -302,6 +309,100 @@ export async function cancelByClient(id, phone) {
   );
   if (!updated) throw conflict('Esa cita ya no está activa.', 'NOT_ACTIVE');
   return serializeForPhoneLookup(updated);
+}
+
+// ---------- rescheduling ----------
+
+const SLOT_TAKEN_MESSAGE = 'Ese horario se acaba de ocupar. Elige otro, por favor.';
+
+/**
+ * Moves a confirmed booking in place: same _id, booking code and QR, so the ticket the client
+ * already has keeps working. The filter pins the current date and time, so two moves at once
+ * cannot both win; the unique tick index still refuses any overlap with other appointments.
+ */
+async function moveAppointment(current, { date, timeSlot, by }) {
+  const start = toMinutes(timeSlot);
+  let updated;
+  try {
+    updated = await Appointment.findOneAndUpdate(
+      { _id: current._id, status: APPOINTMENT_STATUS.CONFIRMED, holdsSlot: true, date: current.date, timeSlot: current.timeSlot },
+      {
+        $set: {
+          date,
+          timeSlot,
+          endTime: toTime(start + current.durationMinutes),
+          occupiedTicks: ticksFor(start, current.durationMinutes),
+          rescheduledAt: new Date(),
+          rescheduledBy: by,
+          previousDate: current.date,
+          previousTimeSlot: current.timeSlot,
+        },
+        $inc: { rescheduleCount: 1 },
+      },
+      { returnDocument: 'after', lean: true, projection: ADMIN_PROJECTION, runValidators: true },
+    );
+  } catch (error) {
+    if (isDuplicateKey(error)) throw conflict(SLOT_TAKEN_MESSAGE, 'SLOT_TAKEN');
+    throw error;
+  }
+  if (!updated) throw conflict('Esta cita cambió mientras la editabas. Vuelve a abrirla.', 'NOT_ACTIVE');
+  try {
+    await recordReschedule({ phone: updated.clientPhone, date: updated.date });
+  } catch (error) {
+    console.error('[appointments] could not update client directory after reschedule', error);
+  }
+  return updated;
+}
+
+function assertNewTime(current, date, timeSlot) {
+  if (current.date === date && current.timeSlot === timeSlot) {
+    throw unprocessable('Esa ya es la fecha y hora de la cita. Elige otra.', 'SAME_TIME');
+  }
+}
+
+/** The client moves her own appointment, with the same rules as booking on the portal. */
+export async function rescheduleByClient(id, { phone, date, timeSlot }) {
+  const settings = await getSettingsDoc();
+  const now = businessNow(settings);
+  const current = await Appointment.findById(id, ADMIN_PROJECTION).lean();
+  if (!current || current.kind === 'block' || current.clientPhone !== phone) {
+    throw notFound('No encontramos esa cita con ese número.', 'APPOINTMENT_NOT_FOUND');
+  }
+  if (current.status !== APPOINTMENT_STATUS.CONFIRMED) throw conflict('Esa cita ya no está activa.', 'NOT_ACTIVE');
+  if (hasStarted(current, now)) {
+    throw unprocessable('Esa cita ya empezó o pasó. Escríbenos por WhatsApp.', 'ALREADY_STARTED');
+  }
+  assertNewTime(current, date, timeSlot);
+
+  const occupied = await occupiedTicksOn(date, { excludeId: current._id });
+  const check = checkSlot({ settings, date, time: timeSlot, durationMinutes: current.durationMinutes, occupied, now });
+  if (!check.ok) {
+    if (check.reason === 'taken') throw conflict(SLOT_TAKEN_MESSAGE, 'SLOT_TAKEN');
+    if (check.reason === 'invalid_time') throw unprocessable('Esa hora no está disponible para este servicio.', 'INVALID_TIME');
+    throw unprocessable(DATE_REASON_LABELS[check.reason] || 'Esa fecha no está disponible.', 'DATE_UNAVAILABLE');
+  }
+  return serializeForPhoneLookup(await moveAppointment(current, { date, timeSlot, by: 'client' }));
+}
+
+/**
+ * The salon moves an appointment from the panel. Like a manual booking it may use any time,
+ * even outside opening hours, but never the past or an occupied range.
+ */
+export async function rescheduleByAdmin(id, { date, timeSlot }) {
+  const settings = await getSettingsDoc();
+  const now = businessNow(settings);
+  const current = await Appointment.findOne({ _id: id, ...NOT_BLOCK }, ADMIN_PROJECTION).lean();
+  if (!current) throw notFound('Esa cita no existe.', 'APPOINTMENT_NOT_FOUND');
+  if (current.status !== APPOINTMENT_STATUS.CONFIRMED) throw conflict('Solo se pueden reagendar citas confirmadas.', 'NOT_ACTIVE');
+  assertNewTime(current, date, timeSlot);
+
+  const start = toMinutes(timeSlot);
+  if (start + current.durationMinutes > 24 * 60) throw unprocessable('El servicio no cabe en ese día. Elige una hora más temprano.', 'INVALID_TIME');
+  assertNotPast(date, start, now);
+  const clash = overlapMessage(await occupiedTicksOn(date, { excludeId: current._id }), ticksFor(start, current.durationMinutes), 'Esa hora');
+  if (clash) throw conflict(clash, 'SLOT_TAKEN');
+
+  return serializeForAdmin(await moveAppointment(current, { date, timeSlot, by: 'admin' }));
 }
 
 // ---------- admin ----------

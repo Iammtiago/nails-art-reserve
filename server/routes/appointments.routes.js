@@ -6,11 +6,12 @@ import {
   daysQuerySchema,
   idParamSchema,
   phoneParamSchema,
+  rescheduleByClientSchema,
   verifySchema,
 } from '../../shared/schemas.js';
 import { env } from '../config/env.js';
 import { requireAdmin, validate } from '../middleware/index.js';
-import { cancelByClient, createAppointment, listActiveByPhone, verifyCode } from '../services/appointment.service.js';
+import { cancelByClient, createAppointment, listActiveByPhone, rescheduleByClient, verifyCode } from '../services/appointment.service.js';
 import { getAvailability, getBookableDays } from '../services/availability.service.js';
 import { rateLimit } from '../services/rate-limit.service.js';
 
@@ -25,13 +26,13 @@ function publicBaseUrl(req) {
 
 // GET /api/appointments/days?service=manicura — status of each date in the booking window.
 appointmentsRouter.get('/days', validate(daysQuerySchema, 'query'), async (req, res) => {
-  res.json(await getBookableDays({ serviceKey: req.valid.query.service }));
+  res.json(await getBookableDays({ serviceKey: req.valid.query.service, excludeId: req.valid.query.exclude || null }));
 });
 
 // GET /api/appointments/availability?date=YYYY-MM-DD&service=manicura
 appointmentsRouter.get('/availability', validate(availabilityQuerySchema, 'query'), async (req, res) => {
-  const { date, service } = req.valid.query;
-  res.json(await getAvailability({ date, serviceKey: service }));
+  const { date, service, exclude } = req.valid.query;
+  res.json(await getAvailability({ date, serviceKey: service, excludeId: exclude || null }));
 });
 
 // GET /api/appointments/by-phone/:phone — active appointments the client can still cancel.
@@ -63,6 +64,19 @@ appointmentsRouter.patch(
   validate(cancelByClientSchema),
   async (req, res) => {
     const appointment = await cancelByClient(req.valid.params.id, req.valid.body.phone);
+    res.json({ appointment });
+  },
+);
+
+// PATCH /api/appointments/:id/reschedule — the client moves her own appointment (phone must match).
+// Same _id, code and QR; only the date and time change.
+appointmentsRouter.patch(
+  '/:id/reschedule',
+  rateLimit({ bucket: 'reschedule', limit: 15, windowMs: TEN_MINUTES, message: 'Demasiados intentos.' }),
+  validate(idParamSchema, 'params'),
+  validate(rescheduleByClientSchema),
+  async (req, res) => {
+    const appointment = await rescheduleByClient(req.valid.params.id, req.valid.body);
     res.json({ appointment });
   },
 );

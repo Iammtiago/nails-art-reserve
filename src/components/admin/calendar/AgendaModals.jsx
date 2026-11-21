@@ -1,16 +1,16 @@
 'use client';
 
-// «Nueva cita» (manual booking from the panel) and «Ocupar horario» (time the salon keeps).
-// Both read the day's occupation to suggest free times; the server re-checks everything.
+// «Nueva cita» (manual booking from the panel), «Reagendar» and «Ocupar horario» (time the salon keeps).
+// All read the day's occupation to suggest free times; the server re-checks everything.
 
-import { CalendarPlus, Lock } from 'lucide-react';
+import { CalendarClock, CalendarPlus, Lock } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { LIMITS, TICK_MINUTES } from '@shared/constants.js';
 import { formatDateLong, formatDuration, formatTime } from '@shared/format.js';
 import { candidateStarts, getDayConfig, ticksFor } from '@shared/schedule.js';
-import { adminAppointmentSchema, fieldErrorsFor, timeBlockSchema } from '@shared/schemas.js';
+import { adminAppointmentSchema, adminRescheduleSchema, fieldErrorsFor, timeBlockSchema } from '@shared/schemas.js';
 import { guessMeridiem, partsToTime, toMinutes, toTime } from '@shared/time.js';
-import { ApiError, apiGet, apiPost } from '@/lib/api';
+import { ApiError, apiGet, apiPatch, apiPost } from '@/lib/api';
 import { useAsync } from '@/lib/hooks';
 import { TicketDownloadButton, TicketQr } from '@/components/admin/TicketDownload';
 import { useAdmin } from '@/components/admin/AdminContext';
@@ -19,8 +19,11 @@ import { Field, Input, Select } from '@/components/ui/Field';
 import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
 
-/** Ticks already taken on `date` (confirmed and attended appointments plus time blocks). */
-function useOccupied(date) {
+/**
+ * Ticks already taken on `date` (confirmed and attended appointments plus time blocks).
+ * `excludeId` leaves out the appointment being rescheduled, so its own time counts as free.
+ */
+function useOccupied(date, excludeId = null) {
   const state = useAsync(
     (signal) => (date ? apiGet('/api/admin/calendar', { from: date, to: date }, { signal }) : Promise.resolve(null)),
     [date],
@@ -28,11 +31,11 @@ function useOccupied(date) {
   const occupied = useMemo(() => {
     const set = new Set();
     for (const a of state.data?.appointments || []) {
-      if (a.status === 'cancelled') continue;
+      if (a.status === 'cancelled' || a.id === excludeId) continue;
       for (const t of ticksFor(toMinutes(a.timeSlot), toMinutes(a.endTime) - toMinutes(a.timeSlot))) set.add(t);
     }
     return set;
-  }, [state.data]);
+  }, [state.data, excludeId]);
   return { occupied, now: state.data?.now || null, loading: state.loading };
 }
 
@@ -357,6 +360,118 @@ export function ManualAppointmentModal({ open, initialDate, initialTime = null, 
         />
       ) : null}
       {open && done ? <ManualDone appointment={done} onClose={onClose} /> : null}
+    </Modal>
+  );
+}
+
+// ---------- Reagendar ----------
+
+function RescheduleForm({ appointment, onDone, onCancel }) {
+  const { settings, handleError } = useAdmin();
+  const toast = useToast();
+  const [form, setForm] = useState(() => ({ date: appointment.date, timeSlot: '' }));
+  const [errors, setErrors] = useState({});
+  const [saving, setSaving] = useState(false);
+  const { occupied, now } = useOccupied(form.date, appointment.id);
+  const duration = appointment.durationMinutes || toMinutes(appointment.endTime) - toMinutes(appointment.timeSlot);
+
+  const slots = useMemo(() => {
+    const day = getDayConfig(settings?.workingHours, form.date);
+    return candidateStarts(day, duration)
+      .filter((m) => notPast(now, form.date, m) && isFree(occupied, m, duration))
+      .map(toTime)
+      .filter((t) => !(form.date === appointment.date && t === appointment.timeSlot));
+  }, [settings?.workingHours, form.date, duration, occupied, now, appointment.date, appointment.timeSlot]);
+
+  const set = (key, value) => {
+    setForm((f) => ({ ...f, [key]: value }));
+    setErrors((e) => ({ ...e, [key]: undefined }));
+  };
+
+  const chosen = form.timeSlot ? toMinutes(form.timeSlot) : null;
+  const clash = chosen !== null && !isFree(occupied, chosen, duration);
+  const unchanged = form.date === appointment.date && form.timeSlot === appointment.timeSlot;
+
+  async function submit(event) {
+    event.preventDefault();
+    const local = fieldErrorsFor(adminRescheduleSchema, form);
+    if (!form.timeSlot) local.timeSlot = 'Elige la nueva hora.';
+    else if (unchanged) local.timeSlot = 'Esa ya es la hora de la cita. Elige otra.';
+    if (Object.keys(local).length) {
+      setErrors(local);
+      return;
+    }
+    setSaving(true);
+    try {
+      const { appointment: updated } = await apiPatch(`/api/admin/appointments/${appointment.id}/reschedule`, form);
+      // formatTime already ends in «a. m.»/«p. m.»: no extra period.
+      toast.success(`Cita reagendada: ${formatDateLong(updated.date).toLowerCase()}, ${formatTime(updated.timeSlot)}`);
+      onDone(updated);
+    } catch (error) {
+      const gone = error instanceof ApiError && (error.status === 404 || error.code === 'NOT_ACTIVE');
+      if (error instanceof ApiError && Object.keys(error.fieldErrors()).some((k) => k in form)) setErrors(error.fieldErrors());
+      else if (!gone && error instanceof ApiError && (error.status === 409 || error.status === 422)) setErrors({ timeSlot: error.message });
+      else {
+        handleError(error);
+        if (gone) onDone(null);
+      }
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  return (
+    <form onSubmit={submit} noValidate className="space-y-4">
+      <div className="rounded-2xl bg-secondary-soft/70 p-4">
+        <p className="text-xs font-semibold uppercase tracking-wide text-ink-3">Ahora está agendada</p>
+        <p className="mt-1 font-semibold text-accent-ink">
+          {formatDateLong(appointment.date, { withYear: true })} · {formatTime(appointment.timeSlot)} – {formatTime(appointment.endTime)}
+        </p>
+        <p className="mt-1 text-sm text-ink-2">
+          {appointment.clientName} · {appointment.serviceName} · {formatDuration(duration)}
+        </p>
+      </div>
+      <Field label="Nueva fecha" error={errors.date}>
+        {(p) => <Input {...p} type="date" value={form.date} min={now?.date} onChange={(e) => set('date', e.target.value)} />}
+      </Field>
+      <div>
+        <p className="field-label">Nueva hora</p>
+        <SlotChips slots={slots} value={form.timeSlot} onPick={(t) => set('timeSlot', t)} />
+        <TypedTime
+          value={form.timeSlot}
+          onChange={(t) => set('timeSlot', t)}
+          error={errors.timeSlot || (clash ? 'Esa hora choca con otra cita u horario ocupado.' : undefined)}
+          hint={chosen !== null ? `De ${formatTime(form.timeSlot)} a ${formatTime(toTime(chosen + duration))}. El horario anterior queda libre.` : 'Por ejemplo 5 : 30 o 6 : 45.'}
+        />
+      </div>
+      <p className="text-xs text-ink-3">El código y el QR de la clienta no cambian. Avísale la nueva hora por WhatsApp.</p>
+      <div className="sticky bottom-0 -mx-1 flex flex-col-reverse gap-2 bg-transparent px-1 pt-3 sm:flex-row sm:justify-end">
+        <Button variant="secondary" onClick={onCancel}>
+          Volver
+        </Button>
+        <Button type="submit" icon={CalendarClock} loading={saving} disabled={clash || unchanged}>
+          Reagendar cita
+        </Button>
+      </div>
+    </form>
+  );
+}
+
+/** Moves a confirmed appointment to another date or time. onDone(updated | null, id). */
+export function RescheduleModal({ appointment, onClose, onDone }) {
+  return (
+    <Modal open={Boolean(appointment)} onClose={onClose} title="Reagendar cita" description="Elige la nueva fecha y hora. Puedes usar cualquier hora libre." size="lg" placement="top">
+      {appointment ? (
+        <RescheduleForm
+          key={appointment.id}
+          appointment={appointment}
+          onCancel={onClose}
+          onDone={(updated) => {
+            onDone?.(updated, appointment.id);
+            onClose();
+          }}
+        />
+      ) : null}
     </Modal>
   );
 }

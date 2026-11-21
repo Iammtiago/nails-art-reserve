@@ -43,6 +43,12 @@ const appointmentSchema = new Schema(
     cancelledAt: { type: Date },
     cancelledBy: { type: String, enum: ['client', 'admin'] },
     completedAt: { type: Date },
+    // Moving an appointment keeps its _id, code and QR; these fields only record the last move.
+    rescheduledAt: { type: Date },
+    rescheduledBy: { type: String, enum: ['client', 'admin'] },
+    previousDate: { type: String, match: DATE_RE },
+    previousTimeSlot: { type: String, match: TIME_RE },
+    rescheduleCount: { type: Number, min: 0 },
   },
   { timestamps: true },
 );

@@ -43,6 +43,14 @@ export function formatDayMonth(date) {
   return dayMonth.format(toUtcDate(date)).replace(/\./g, '');
 }
 
+const weekdayDayMonth = new Intl.DateTimeFormat(LOCALE, { weekday: 'short', day: 'numeric', month: 'short', timeZone: 'UTC' });
+
+/** 2026-11-21 -> «Sáb 21 nov» */
+export function formatWeekdayDayMonth(date) {
+  if (!date) return '';
+  return capitalize(weekdayDayMonth.format(toUtcDate(date)).replace(/\./g, '').replace(/,/g, ''));
+}
+
 /** 2026-11-01 -> «Noviembre de 2026» */
 export function formatMonth(date) {
   if (!date) return '';

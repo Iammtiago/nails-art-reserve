@@ -1,14 +1,25 @@
 'use client';
 
+import { CalendarDays } from 'lucide-react';
 import { formatDuration, formatTime, formatTimeRange } from '@shared/format.js';
 import { formatPhone } from '@shared/phone.js';
 import { StatusBadge } from '@/components/ui/Badge';
 import { AppointmentActions } from './AppointmentActions';
-import { contactHref, dateLabel, staggerDelay } from './appointmentUtils';
+import { agendaDateLabel, contactHref, dateLabel, staggerDelay } from './appointmentUtils';
 
-// Same columns for the header and every row, so they line up (Hora, Clienta, Servicio, Código, Estado, Acciones).
+// Same columns for the header and every row, so they line up (Fecha y hora, Clienta, Servicio, Código, Estado, Acciones).
 const ROW_GRID =
-  'lg:grid-cols-[7rem_minmax(0,1.2fr)_minmax(0,1fr)_5rem_6.75rem_8.75rem] xl:grid-cols-[8rem_minmax(0,1.25fr)_minmax(0,1fr)_5.5rem_7rem_17rem]';
+  'lg:grid-cols-[7.5rem_minmax(0,1.2fr)_minmax(0,1fr)_5rem_6.75rem_8.75rem] xl:grid-cols-[8.5rem_minmax(0,1.25fr)_minmax(0,1fr)_5.5rem_7rem_19.5rem]';
+
+/** The day of the appointment, purple and easy to spot (Tiago, 2026-11-20). */
+function AgendaDate({ date, today, className = '' }) {
+  return (
+    <p className={`flex items-center gap-1.5 text-sm font-bold text-accent-ink ${className}`}>
+      <CalendarDays aria-hidden="true" className="h-4 w-4 shrink-0" />
+      <span className="whitespace-nowrap">{agendaDateLabel(date, today)}</span>
+    </p>
+  );
+}
 
 // The whole row/card opens the detail: the button stretches over it; actions sit above.
 const STRETCHED =
@@ -26,18 +37,17 @@ function openLabel(appointment, today) {
   return `Ver detalle de la cita de ${appointment.clientName}: ${dateLabel(appointment.date, today)}, ${formatTimeRange(appointment.timeSlot, appointment.endTime)}`;
 }
 
-function AppointmentRow({ appointment, today, businessName, busyAction, disabled, onOpen, onComplete, onCancel, onPurged, index }) {
-  const isToday = appointment.date === today;
+function AppointmentRow({ appointment, today, businessName, busyAction, disabled, onOpen, onComplete, onCancel, onReschedule, onPurged, index }) {
   return (
     <li
       className={`enter relative grid items-center gap-2.5 px-4 py-3 transition hover:bg-primary-soft/50 ${ROW_GRID}`}
       style={{ animationDelay: staggerDelay(index) }}
     >
       <div className="min-w-0 text-sm">
-        <button type="button" onClick={() => onOpen(appointment)} aria-label={openLabel(appointment, today)} className={`block ${STRETCHED}`}>
+        <AgendaDate date={appointment.date} today={today} />
+        <button type="button" onClick={() => onOpen(appointment)} aria-label={openLabel(appointment, today)} className={`mt-0.5 block ${STRETCHED}`}>
           <TimeRange start={appointment.timeSlot} end={appointment.endTime} />
         </button>
-        <p className={`mt-0.5 text-xs ${isToday ? 'font-semibold text-accent-ink' : 'text-ink-3'}`}>{dateLabel(appointment.date, today)}</p>
       </div>
       <div className="min-w-0">
         <p className="truncate font-semibold text-ink" title={appointment.clientName}>
@@ -62,6 +72,7 @@ function AppointmentRow({ appointment, today, businessName, busyAction, disabled
         disabled={disabled}
         onComplete={onComplete}
         onCancel={onCancel}
+        onReschedule={onReschedule}
         onPurged={onPurged}
         compactOnLg
         className="relative z-10 justify-end"
@@ -70,18 +81,16 @@ function AppointmentRow({ appointment, today, businessName, busyAction, disabled
   );
 }
 
-function AppointmentCard({ appointment, today, businessName, busyAction, disabled, onOpen, onComplete, onCancel, onPurged, index }) {
-  const isToday = appointment.date === today;
+function AppointmentCard({ appointment, today, businessName, busyAction, disabled, onOpen, onComplete, onCancel, onReschedule, onPurged, index }) {
   return (
     <li className="glass enter relative p-4" style={{ animationDelay: staggerDelay(index) }}>
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <button type="button" onClick={() => onOpen(appointment)} aria-label={openLabel(appointment, today)} className={`block after:rounded-2xl ${STRETCHED}`}>
+          <AgendaDate date={appointment.date} today={today} className="text-base" />
+          <button type="button" onClick={() => onOpen(appointment)} aria-label={openLabel(appointment, today)} className={`mt-0.5 block after:rounded-2xl ${STRETCHED}`}>
             <TimeRange start={appointment.timeSlot} end={appointment.endTime} className="text-base" />
           </button>
-          <p className={`mt-0.5 text-xs ${isToday ? 'font-semibold text-accent-ink' : 'text-ink-3'}`}>
-            {dateLabel(appointment.date, today)} · {formatDuration(appointment.durationMinutes)}
-          </p>
+          <p className="mt-0.5 text-xs text-ink-3">{formatDuration(appointment.durationMinutes)}</p>
         </div>
         <StatusBadge status={appointment.status} />
       </div>
@@ -100,6 +109,7 @@ function AppointmentCard({ appointment, today, businessName, busyAction, disable
         disabled={disabled}
         onComplete={onComplete}
         onCancel={onCancel}
+        onReschedule={onReschedule}
         onPurged={onPurged}
         className="relative z-10 mt-3 border-t border-line/60 pt-3"
       />
@@ -111,8 +121,8 @@ function AppointmentCard({ appointment, today, businessName, busyAction, disable
  * Appointment list: table-like rows inside a glass card from lg, stacked cards below.
  * busyFor(id) -> 'complete' | 'cancel' | null; anyBusy disables every action meanwhile.
  */
-export function AppointmentList({ items, today, businessName, busyFor, anyBusy, refreshing, onOpen, onComplete, onCancel, onPurged }) {
-  const shared = { today, businessName, onOpen, onComplete, onCancel, onPurged, disabled: anyBusy };
+export function AppointmentList({ items, today, businessName, busyFor, anyBusy, refreshing, onOpen, onComplete, onCancel, onReschedule, onPurged }) {
+  const shared = { today, businessName, onOpen, onComplete, onCancel, onReschedule, onPurged, disabled: anyBusy };
   return (
     <div className={`transition-opacity duration-200 ${refreshing ? 'opacity-60' : ''}`} aria-busy={refreshing || undefined}>
       <div className="glass hidden overflow-hidden lg:block">
@@ -120,7 +130,7 @@ export function AppointmentList({ items, today, businessName, busyFor, anyBusy, 
           aria-hidden="true"
           className={`grid gap-2.5 border-b border-line/70 px-4 py-3 text-xs font-semibold uppercase tracking-wide text-ink-3 ${ROW_GRID}`}
         >
-          <span>Hora</span>
+          <span>Fecha y hora</span>
           <span>Clienta</span>
           <span>Servicio</span>
           <span>Código</span>

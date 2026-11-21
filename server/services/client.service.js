@@ -19,6 +19,12 @@ export async function recordBooking({ phone, name, date }) {
   );
 }
 
+/** Keeps the directory's «last appointment» in step when an appointment moves later. */
+export async function recordReschedule({ phone, date }) {
+  if (!phone) return;
+  await Client.updateOne({ phone }, { $max: { lastAppointmentDate: date } });
+}
+
 /** Counts a visit when an appointment is marked as attended. */
 export async function recordVisit({ phone, name, date }) {
   await Client.findOneAndUpdate(

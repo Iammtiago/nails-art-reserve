@@ -10,10 +10,15 @@ export function findActiveService(settings, serviceKey) {
   return service;
 }
 
-/** Occupied ticks per date for appointments that hold time (confirmed or attended). */
-export async function occupiedTicksByDate({ from, to }) {
+/**
+ * Occupied ticks per date for appointments that hold time (confirmed or attended).
+ * `excludeId` leaves one appointment out: the one being rescheduled.
+ */
+export async function occupiedTicksByDate({ from, to, excludeId = null }) {
+  const filter = { date: { $gte: from, $lte: to }, holdsSlot: true };
+  if (excludeId) filter._id = { $ne: excludeId };
   const rows = await Appointment.find(
-    { date: { $gte: from, $lte: to }, holdsSlot: true },
+    filter,
     { date: 1, occupiedTicks: 1, _id: 0 },
   ).lean();
   const map = new Map();
@@ -25,16 +30,16 @@ export async function occupiedTicksByDate({ from, to }) {
   return map;
 }
 
-export async function occupiedTicksOn(date) {
-  const map = await occupiedTicksByDate({ from: date, to: date });
+export async function occupiedTicksOn(date, { excludeId = null } = {}) {
+  const map = await occupiedTicksByDate({ from: date, to: date, excludeId });
   return map.get(date) || new Set();
 }
 
-export async function getAvailability({ date, serviceKey }) {
+export async function getAvailability({ date, serviceKey, excludeId = null }) {
   const settings = await getSettingsDoc();
   const service = findActiveService(settings, serviceKey);
   const now = businessNow(settings);
-  const occupied = await occupiedTicksOn(date);
+  const occupied = await occupiedTicksOn(date, { excludeId });
   const result = computeAvailability({ settings, date, durationMinutes: service.durationMinutes, occupied, now });
   return {
     ...result,
@@ -45,12 +50,12 @@ export async function getAvailability({ date, serviceKey }) {
 }
 
 /** Status of every date in the booking window for one service (drives the public calendar). */
-export async function getBookableDays({ serviceKey }) {
+export async function getBookableDays({ serviceKey, excludeId = null }) {
   const settings = await getSettingsDoc();
   const service = findActiveService(settings, serviceKey);
   const now = businessNow(settings);
   const last = addDays(now.date, settings.booking.windowDays);
-  const occupiedMap = await occupiedTicksByDate({ from: now.date, to: last });
+  const occupiedMap = await occupiedTicksByDate({ from: now.date, to: last, excludeId });
 
   const days = [];
   for (let date = now.date; date <= last; date = addDays(date, 1)) {

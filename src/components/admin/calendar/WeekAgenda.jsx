@@ -45,7 +45,7 @@ function AgendaDay({ day, items, isToday, workingHours, index, onOpenDay, onOpen
         >
           <span className="min-w-0 flex-1">
             <span className="flex flex-wrap items-center gap-2">
-              <span className="font-display text-base font-semibold text-ink">{formatDateLong(day.date)}</span>
+              <span className="font-display text-lg font-semibold text-accent-ink">{formatDateLong(day.date)}</span>
               {isToday ? <Badge tone="accent">Hoy</Badge> : null}
             </span>
             <span className={`mt-0.5 block truncate text-xs ${state === 'blocked' ? 'font-semibold text-danger' : 'text-ink-2'}`}>

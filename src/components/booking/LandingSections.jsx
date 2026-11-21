@@ -98,7 +98,7 @@ export function GoodToKnow({ settings, onCancelClick }) {
           text: 'Por cada número de teléfono, para que la agenda alcance para todas.',
         }
       : null,
-    { icon: CalendarX2, title: '¿No puedes venir? Avísanos', text: 'Cancela con tu teléfono hasta la hora de tu cita y el espacio queda libre para otra clienta.', action: true },
+    { icon: CalendarX2, title: '¿No puedes venir? Avísanos', text: 'Con tu teléfono puedes reagendar o cancelar hasta la hora de tu cita; el espacio queda libre para otra clienta.', action: true },
   ].filter(Boolean);
 
   return (
@@ -133,7 +133,7 @@ export function GoodToKnow({ settings, onCancelClick }) {
                 {action ? (
                   <button type="button" onClick={onCancelClick} className="btn btn-soft btn-sm mt-3 w-fit sm:mt-4">
                     <CalendarX2 aria-hidden="true" className="h-4 w-4" />
-                    Cancelar una cita
+                    Reagendar o cancelar
                   </button>
                 ) : null}
               </div>
@@ -262,8 +262,8 @@ export function VisitInfo({ settings }) {
 export function Faq({ settings }) {
   const windowDays = settings.booking?.windowDays;
   const questions = [
-    { q: '¿Tengo que crear una cuenta?', a: 'No. Solo tu nombre y tu número de teléfono. Con ese mismo número puedes ver y cancelar tus citas.' },
-    { q: '¿Cómo cancelo mi cita?', a: 'Toca «Cancelar» arriba, escribe tu teléfono y elige la cita. Puedes hacerlo hasta la hora de inicio; el horario queda libre al instante.' },
+    { q: '¿Tengo que crear una cuenta?', a: 'No. Solo tu nombre y tu número de teléfono. Con ese mismo número puedes ver, reagendar y cancelar tus citas.' },
+    { q: '¿Cómo cambio o cancelo mi cita?', a: 'Toca «Mis citas» arriba, escribe tu teléfono y elige la cita: «Reagendar» para cambiar el día o la hora, o «Cancelar». Puedes hacerlo hasta la hora de inicio; tu ticket y tu clave siguen sirviendo.' },
     { q: '¿Qué hago con el ticket?', a: 'Guárdalo en tu galería con el botón del ticket y muéstralo al llegar. Si no lo tienes a mano, basta con tu clave de 6 caracteres.' },
     { q: '¿Puedo reservar para otra persona?', a: 'Sí: escribe su nombre y su teléfono, así el ticket y la cancelación quedan a su nombre.' },
     windowDays ? { q: '¿Con cuánta anticipación puedo reservar?', a: `Hasta ${windowDays} días antes. Si no ves tu día, es porque ese día no atendemos o ya no quedan horarios.` } : null,

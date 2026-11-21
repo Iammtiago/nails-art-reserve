@@ -169,6 +169,68 @@ describe('client cancellation', () => {
   });
 });
 
+describe('rescheduling', () => {
+  beforeEach(resetData);
+
+  it('lets the client move her appointment, keeping code and QR, and frees the old time', async () => {
+    const created = (await book(booking())).body.appointment;
+
+    // Her own time shows as free when she asks with exclude.
+    const plain = await request(app).get(`/api/appointments/availability?date=${SATURDAY}&service=manicura`);
+    assert.equal(plain.body.slots.find((s) => s.time === '10:00').available, false);
+    const mine = await request(app).get(`/api/appointments/availability?date=${SATURDAY}&service=manicura&exclude=${created.id}`);
+    assert.equal(mine.body.slots.find((s) => s.time === '10:00').available, true);
+
+    const wrong = await request(app).patch(`/api/appointments/${created.id}/reschedule`).set(CSRF).send({ phone: '04149999999', date: SATURDAY, timeSlot: '14:00' });
+    assert.equal(wrong.status, 404);
+    const same = await request(app).patch(`/api/appointments/${created.id}/reschedule`).set(CSRF).send({ phone: '04141234567', date: SATURDAY, timeSlot: '10:30' });
+    assert.equal(same.status, 422);
+    const closed = await request(app).patch(`/api/appointments/${created.id}/reschedule`).set(CSRF).send({ phone: '04141234567', date: '2026-11-22', timeSlot: '10:00' });
+    assert.equal(closed.status, 422, 'Sundays are closed for the portal');
+
+    // Overlapping its own old time (10:30-11:30 -> 11:00-12:00) is fine.
+    const moved = await request(app).patch(`/api/appointments/${created.id}/reschedule`).set(CSRF).send({ phone: '04141234567', date: SATURDAY, timeSlot: '11:00' });
+    assert.equal(moved.status, 200, JSON.stringify(moved.body));
+    assert.equal(moved.body.appointment.timeSlot, '11:00');
+    assert.equal(moved.body.appointment.endTime, '12:00');
+    assert.equal(moved.body.appointment.bookingCode, undefined);
+
+    const { Appointment } = await import('../models/index.js');
+    const doc = await Appointment.findById(created.id).lean();
+    assert.equal(doc.bookingCode, created.bookingCode, 'same code');
+    assert.ok(doc.qrDataUrl, 'QR kept');
+    assert.equal(doc.previousTimeSlot, '10:30');
+    assert.equal(doc.rescheduledBy, 'client');
+    assert.equal(await Appointment.countDocuments({}), 1, 'moved in place, nothing deleted or duplicated');
+
+    const freed = await book(booking({ timeSlot: '09:30', clientPhone: '04247654321', clientName: 'Otra Clienta' }));
+    assert.equal(freed.status, 201, '09:30-10:30 is free again');
+    const clash = await book(booking({ timeSlot: '11:30', clientPhone: '04247654322', clientName: 'Tercera' }));
+    assert.equal(clash.status, 409, 'new time is held');
+  });
+
+  it('lets the admin move an appointment to any free future time, never over another one', async () => {
+    const agent = await loginAgent();
+    const a = (await book(booking())).body.appointment;
+    await book(booking({ timeSlot: '14:00', clientPhone: '04247654321', clientName: 'Otra Clienta' }));
+
+    assert.equal((await request(app).patch(`/api/admin/appointments/${a.id}/reschedule`).set(CSRF).send({ date: SATURDAY, timeSlot: '19:00' })).status, 401);
+    const over = await agent.patch(`/api/admin/appointments/${a.id}/reschedule`).set(CSRF).send({ date: SATURDAY, timeSlot: '13:30' });
+    assert.equal(over.status, 409);
+    const past = await agent.patch(`/api/admin/appointments/${a.id}/reschedule`).set(CSRF).send({ date: TODAY, timeSlot: '08:00' });
+    assert.equal(past.status, 422);
+    const late = await agent.patch(`/api/admin/appointments/${a.id}/reschedule`).set(CSRF).send({ date: SATURDAY, timeSlot: '19:00' });
+    assert.equal(late.status, 200, JSON.stringify(late.body));
+    assert.equal(late.body.appointment.endTime, '20:00');
+    assert.equal(late.body.appointment.rescheduledBy, 'admin');
+    assert.equal(late.body.appointment.previousTimeSlot, '10:30');
+
+    await agent.patch(`/api/admin/appointments/${a.id}/cancel`).set(CSRF);
+    const cancelled = await agent.patch(`/api/admin/appointments/${a.id}/reschedule`).set(CSRF).send({ date: SATURDAY, timeSlot: '09:00' });
+    assert.equal(cancelled.status, 409);
+  });
+});
+
 describe('admin', () => {
   before(async () => {
     const { AdminUser } = await import('../models/index.js');

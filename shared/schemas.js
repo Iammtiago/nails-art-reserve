@@ -71,13 +71,16 @@ const searchParam = z.string().trim().max(60, 'Búsqueda demasiado larga.').defa
 
 // ---------- public booking ----------
 
+// `exclude`: the appointment being rescheduled, so its own time shows as free.
 export const availabilityQuerySchema = z.object({
   date: dateString,
   service: slug,
+  exclude: objectIdString.optional(),
 });
 
 export const daysQuerySchema = z.object({
   service: slug,
+  exclude: objectIdString.optional(),
 });
 
 export const createAppointmentSchema = z.strictObject({
@@ -93,6 +96,13 @@ export const createAppointmentSchema = z.strictObject({
 export const phoneParamSchema = z.object({ phone: phoneField });
 
 export const cancelByClientSchema = z.strictObject({ phone: phoneField });
+
+/** The client moves her own appointment: the phone must match, the new slot follows portal rules. */
+export const rescheduleByClientSchema = z.strictObject({
+  phone: phoneField,
+  date: dateString,
+  timeSlot: timeString,
+});
 
 export const idParamSchema = z.object({ id: objectIdString });
 
@@ -196,6 +206,12 @@ export const adminAppointmentSchema = z.strictObject({
   timeSlot: tickTime,
   clientName: clientNameField,
   clientPhone: phoneField,
+});
+
+/** Moving an appointment from the panel: any free start on a 15-minute tick, not in the past. */
+export const adminRescheduleSchema = z.strictObject({
+  date: dateString,
+  timeSlot: tickTime,
 });
 
 /** Time the salon keeps for itself on one day (lunch, a personal errand, a private client…). */

@@ -11,7 +11,7 @@ export async function getCalendar({ from, to }) {
   const now = businessNow(settings);
   const appointments = await Appointment.find(
     { date: { $gte: from, $lte: to }, status: { $ne: APPOINTMENT_STATUS.CANCELLED } },
-    { kind: 1, source: 1, clientName: 1, clientPhone: 1, serviceName: 1, durationMinutes: 1, date: 1, timeSlot: 1, endTime: 1, status: 1, bookingCode: 1 },
+    { kind: 1, source: 1, clientName: 1, clientPhone: 1, serviceName: 1, durationMinutes: 1, date: 1, timeSlot: 1, endTime: 1, status: 1, bookingCode: 1, rescheduledAt: 1, rescheduledBy: 1, previousDate: 1, previousTimeSlot: 1 },
   )
     .sort({ date: 1, timeSlot: 1 })
     .lean();
@@ -67,6 +67,10 @@ export async function getCalendar({ from, to }) {
       endTime: a.endTime,
       status: a.status,
       bookingCode: a.bookingCode,
+      rescheduledAt: a.rescheduledAt || null,
+      rescheduledBy: a.rescheduledBy || null,
+      previousDate: a.previousDate || null,
+      previousTimeSlot: a.previousTimeSlot || null,
     })),
   };
 }

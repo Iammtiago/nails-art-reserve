@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarHeart, CalendarX2, Phone } from 'lucide-react';
+import { CalendarClock, CalendarHeart, Phone } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import { BrandLogo } from '@/components/ui/BrandLogo';
 import { telLink } from './landing-utils';
@@ -37,9 +37,15 @@ export function SiteHeader({ settings, onCancelClick }) {
             <CalendarHeart aria-hidden="true" className="h-[18px] w-[18px]" />
             Agendar
           </a>
-          <button type="button" onClick={onCancelClick} className={`${ACTION} text-primary-ink hover:bg-primary-soft`}>
-            <CalendarX2 aria-hidden="true" className="h-[18px] w-[18px]" />
-            Cancelar
+          <button
+            type="button"
+            onClick={onCancelClick}
+            title="Reagendar o cancelar tu cita"
+            aria-label="Mis citas: reagendar o cancelar"
+            className={`${ACTION} text-primary-ink hover:bg-primary-soft`}
+          >
+            <CalendarClock aria-hidden="true" className="h-[18px] w-[18px]" />
+            Mis citas
           </button>
           {tel ? (
             <a href={tel} className={`${ACTION} text-primary-ink hover:bg-primary-soft`}>

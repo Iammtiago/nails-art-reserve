@@ -1,8 +1,8 @@
 'use client';
 
-import { CheckCircle2, CircleX, LockOpen, MessageCircle } from 'lucide-react';
+import { CalendarClock, CheckCircle2, CircleX, LockOpen, MessageCircle } from 'lucide-react';
 import { APPOINTMENT_STATUS } from '@shared/constants.js';
-import { formatDateLong, formatDuration, formatTimeRange } from '@shared/format.js';
+import { formatDateLong, formatDayMonth, formatDuration, formatTime, formatTimeRange } from '@shared/format.js';
 import { formatPhone } from '@shared/phone.js';
 import { Badge, StatusBadge } from '@/components/ui/Badge';
 import { Button } from '@/components/ui/Button';
@@ -24,6 +24,11 @@ function detailRows(appointment, timezone) {
     rows.push({ key: 'cancelled', label: 'Cancelada', value: `${formatInstant(appointment.cancelledAt, timezone)}${by ? ` · por ${by}` : ''}` });
   }
   if (appointment.completedAt) rows.push({ key: 'completed', label: 'Asistencia', value: formatInstant(appointment.completedAt, timezone) });
+  if (appointment.rescheduledAt) {
+    const by = cancelledByLabel(appointment.rescheduledBy);
+    const before = appointment.previousDate ? ` · antes ${formatDayMonth(appointment.previousDate)}, ${formatTime(appointment.previousTimeSlot)}` : '';
+    rows.push({ key: 'rescheduled', label: 'Reagendada', value: `${formatInstant(appointment.rescheduledAt, timezone)}${by ? ` · por ${by}` : ''}${before}` });
+  }
   return rows;
 }
 
@@ -44,7 +49,7 @@ function DetailRow({ row }) {
   );
 }
 
-function DetailFooter({ appointment, waHref, busyAction, disabled, onComplete, onCancel, onPurged }) {
+function DetailFooter({ appointment, waHref, busyAction, disabled, onComplete, onCancel, onReschedule, onPurged }) {
   const confirmed = appointment.status === APPOINTMENT_STATUS.CONFIRMED;
   const purge = <SuperDeleteButton entity="appointment" item={appointment} onDeleted={onPurged} className="w-full sm:mr-auto sm:w-auto" />;
   if (appointment.kind === 'block') {
@@ -67,6 +72,11 @@ function DetailFooter({ appointment, waHref, busyAction, disabled, onComplete, o
           Cancelar cita
         </Button>
       ) : null}
+      {confirmed && onReschedule ? (
+        <Button variant="secondary" icon={CalendarClock} disabled={disabled} onClick={() => onReschedule(appointment)}>
+          Reagendar
+        </Button>
+      ) : null}
       <Button variant="whatsapp" icon={MessageCircle} href={waHref} target="_blank" rel="noopener noreferrer">
         Escribir por WhatsApp
       </Button>
@@ -83,7 +93,7 @@ function DetailFooter({ appointment, waHref, busyAction, disabled, onComplete, o
  * Full detail of one appointment with the same actions as the list.
  * Works with list items (all fields) and calendar items (no created/cancelled/completed instants).
  */
-export function AppointmentDetailModal({ appointment, onClose, today, timezone, businessName, busyAction = null, disabled = false, onComplete, onCancel, onPurged }) {
+export function AppointmentDetailModal({ appointment, onClose, today, timezone, businessName, busyAction = null, disabled = false, onComplete, onCancel, onReschedule, onPurged }) {
   const isToday = Boolean(today) && appointment.date === today;
   const waHref = contactHref(appointment, businessName);
 
@@ -105,6 +115,7 @@ export function AppointmentDetailModal({ appointment, onClose, today, timezone, 
           disabled={disabled}
           onComplete={onComplete}
           onCancel={onCancel}
+          onReschedule={onReschedule}
           onPurged={onPurged}
         />
       }
@@ -115,7 +126,7 @@ export function AppointmentDetailModal({ appointment, onClose, today, timezone, 
           {isToday ? <Badge tone="accent">Hoy</Badge> : null}
         </div>
         <p className="mt-3 font-display text-2xl font-semibold leading-tight text-ink">{formatTimeRange(appointment.timeSlot, appointment.endTime)}</p>
-        <p className="mt-1 text-sm font-medium text-ink-2">{formatDateLong(appointment.date, { withYear: true })}</p>
+        <p className="mt-1 text-base font-semibold text-accent-ink">{formatDateLong(appointment.date, { withYear: true })}</p>
       </div>
       <dl className="mt-2 divide-y divide-line/60">
         {detailRows(appointment, timezone).map((row) => (

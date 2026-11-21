@@ -1,13 +1,20 @@
 // Small display helpers shared by the Citas list, the detail modal and the calendar.
 
 import { DEFAULT_TIMEZONE } from '@shared/constants.js';
-import { formatDayMonth } from '@shared/format.js';
+import { formatDayMonth, formatWeekdayDayMonth } from '@shared/format.js';
 import { clientContactText, whatsappLink } from '@shared/whatsapp.js';
 
 /** «Hoy» when the date is the business' today, otherwise «21 nov». */
 export function dateLabel(date, today) {
   if (!date) return '';
   return today && date === today ? 'Hoy' : formatDayMonth(date);
+}
+
+/** Date in the Citas list: «Hoy · Vie 20 nov» or «Sáb 21 nov» (the weekday helps to read it fast). */
+export function agendaDateLabel(date, today) {
+  if (!date) return '';
+  const label = formatWeekdayDayMonth(date);
+  return today && date === today ? `Hoy · ${label}` : label;
 }
 
 export function firstName(name) {

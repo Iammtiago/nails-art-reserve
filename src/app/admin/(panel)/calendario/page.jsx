@@ -2,7 +2,7 @@
 
 import { CalendarPlus, Lock } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ManualAppointmentModal, TimeBlockModal } from '@/components/admin/calendar/AgendaModals';
+import { ManualAppointmentModal, RescheduleModal, TimeBlockModal } from '@/components/admin/calendar/AgendaModals';
 import { Button } from '@/components/ui/Button';
 import { ApiError, apiGet } from '@/lib/api';
 import { useAsync, useInterval } from '@/lib/hooks';
@@ -41,6 +41,13 @@ export default function CalendarioPage() {
   const [selected, setSelected] = useState(null);
   // { type: 'appointment' | 'block', date } — only one form open at a time, never on top of the day panel.
   const [form, setForm] = useState(null);
+  // Appointment being moved; the detail and the day panel close first so only one dialog is open.
+  const [moving, setMoving] = useState(null);
+  const startReschedule = useCallback((appointment) => {
+    setSelected(null);
+    setOpenDate(null);
+    setMoving(appointment);
+  }, []);
 
   // "Today" comes from the server: settings.now, or /api/settings if the shell has not loaded it.
   const settingsToday = settings?.now?.date || null;
@@ -210,9 +217,12 @@ export default function CalendarioPage() {
           disabled={Boolean(actions.busy)}
           onComplete={actions.complete}
           onCancel={actions.cancel}
+          onReschedule={startReschedule}
           onPurged={(a) => handleAppointmentChanged(null, a.id)}
         />
       ) : null}
+      <RescheduleModal appointment={moving} onClose={() => setMoving(null)} onDone={() => reload({ silent: true })} />
+
     </div>
   );
 }

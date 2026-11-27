@@ -1,12 +1,13 @@
 import { APPOINTMENT_STATUS } from '../../shared/constants.js';
 import { DATE_REASON_LABELS, checkSlot, ticksFor } from '../../shared/schedule.js';
+import { escapeRegex, nameSearchPatterns } from '../../shared/search.js';
 import { toMinutes, toTime } from '../../shared/time.js';
 import { generateBookingCode } from '../lib/booking-code.js';
 import { AppError, conflict, isDuplicateKey, notFound, unprocessable } from '../lib/errors.js';
 import { generateQrDataUrl, verificationUrl } from '../lib/qr.js';
 import { Appointment } from '../models/index.js';
 import { findActiveService, occupiedTicksOn } from './availability.service.js';
-import { recordBooking, recordReschedule, recordVisit } from './client.service.js';
+import { recordBooking, recordReschedule, recordVisit, undoVisit } from './client.service.js';
 import { businessNow, getSettingsDoc } from './settings.service.js';
 
 const MAX_CODE_ATTEMPTS = 6;
@@ -77,12 +78,8 @@ export function serializeForAdmin(a) {
 const ADMIN_PROJECTION = { qrDataUrl: 0, occupiedTicks: 0, __v: 0 };
 const NOT_BLOCK = { kind: { $ne: 'block' } };
 
-function escapeRegex(text) {
-  return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-}
-
 /** Has the appointment already started (in the business timezone)? */
-function hasStarted(appointment, now) {
+export function hasStarted(appointment, now) {
   if (appointment.date < now.date) return true;
   if (appointment.date > now.date) return false;
   return toMinutes(appointment.timeSlot) <= now.minutes;
@@ -315,42 +312,71 @@ export async function cancelByClient(id, phone) {
 
 const SLOT_TAKEN_MESSAGE = 'Ese horario se acaba de ocupar. Elige otro, por favor.';
 
+const CHANGED_MESSAGE = 'Esta cita cambió mientras la editabas. Vuelve a abrirla.';
+const ATTENDED_MESSAGE = 'Esta cita ya fue atendida. Si la marcaste por error, toca «Quitar asistencia» primero.';
+
 /**
- * Moves a confirmed booking in place: same _id, booking code and QR, so the ticket the client
- * already has keeps working. The filter pins the current date and time, so two moves at once
+ * A real visit (attended today or on a past day) is history: it is never moved or cancelled,
+ * only «Quitar asistencia» (which can be redone). An attended appointment on a future day can
+ * only be a mistaken «Asistió», so that one may move or be cancelled directly.
+ */
+function assertChangeable(current, now) {
+  if (current.status === APPOINTMENT_STATUS.COMPLETED && current.date <= now.date) throw conflict(ATTENDED_MESSAGE, 'ATTENDED');
+}
+
+/** Client directory repairs never undo an appointment change that already happened. */
+async function safeUndoVisit(phone) {
+  try {
+    await undoVisit({ phone });
+  } catch (error) {
+    console.error('[appointments] could not update client visits', error);
+  }
+}
+
+/**
+ * Moves a booking in place: same _id, booking code and QR, so the ticket the client already
+ * has keeps working. The filter pins the current status, date and time, so two changes at once
  * cannot both win; the unique tick index still refuses any overlap with other appointments.
+ * An appointment marked as attended by mistake goes back to pending when it moves.
  */
 async function moveAppointment(current, { date, timeSlot, by }) {
   const start = toMinutes(timeSlot);
+  const wasCompleted = current.status === APPOINTMENT_STATUS.COMPLETED;
+  const update = {
+    $set: {
+      date,
+      timeSlot,
+      endTime: toTime(start + current.durationMinutes),
+      occupiedTicks: ticksFor(start, current.durationMinutes),
+      rescheduledAt: new Date(),
+      rescheduledBy: by,
+      previousDate: current.date,
+      previousTimeSlot: current.timeSlot,
+    },
+    $inc: { rescheduleCount: 1 },
+  };
+  if (wasCompleted) {
+    update.$set.status = APPOINTMENT_STATUS.CONFIRMED;
+    update.$unset = { completedAt: 1 };
+  }
   let updated;
   try {
     updated = await Appointment.findOneAndUpdate(
-      { _id: current._id, status: APPOINTMENT_STATUS.CONFIRMED, holdsSlot: true, date: current.date, timeSlot: current.timeSlot },
-      {
-        $set: {
-          date,
-          timeSlot,
-          endTime: toTime(start + current.durationMinutes),
-          occupiedTicks: ticksFor(start, current.durationMinutes),
-          rescheduledAt: new Date(),
-          rescheduledBy: by,
-          previousDate: current.date,
-          previousTimeSlot: current.timeSlot,
-        },
-        $inc: { rescheduleCount: 1 },
-      },
+      { _id: current._id, status: current.status, holdsSlot: true, date: current.date, timeSlot: current.timeSlot },
+      update,
       { returnDocument: 'after', lean: true, projection: ADMIN_PROJECTION, runValidators: true },
     );
   } catch (error) {
     if (isDuplicateKey(error)) throw conflict(SLOT_TAKEN_MESSAGE, 'SLOT_TAKEN');
     throw error;
   }
-  if (!updated) throw conflict('Esta cita cambió mientras la editabas. Vuelve a abrirla.', 'NOT_ACTIVE');
+  if (!updated) throw conflict(CHANGED_MESSAGE, 'NOT_ACTIVE');
   try {
     await recordReschedule({ phone: updated.clientPhone, date: updated.date });
   } catch (error) {
     console.error('[appointments] could not update client directory after reschedule', error);
   }
+  if (wasCompleted) await safeUndoVisit(updated.clientPhone);
   return updated;
 }
 
@@ -385,15 +411,18 @@ export async function rescheduleByClient(id, { phone, date, timeSlot }) {
 }
 
 /**
- * The salon moves an appointment from the panel. Like a manual booking it may use any time,
- * even outside opening hours, but never the past or an occupied range.
+ * The salon moves an appointment from the panel, whatever day it is on (past, today or months
+ * ahead). Like a manual booking the new time may be outside opening hours or past the booking
+ * window, but never in the past or over an occupied range. A cancelled one cannot move: its
+ * time was already freed, so it is booked again instead.
  */
 export async function rescheduleByAdmin(id, { date, timeSlot }) {
   const settings = await getSettingsDoc();
   const now = businessNow(settings);
   const current = await Appointment.findOne({ _id: id, ...NOT_BLOCK }, ADMIN_PROJECTION).lean();
   if (!current) throw notFound('Esa cita no existe.', 'APPOINTMENT_NOT_FOUND');
-  if (current.status !== APPOINTMENT_STATUS.CONFIRMED) throw conflict('Solo se pueden reagendar citas confirmadas.', 'NOT_ACTIVE');
+  if (current.status === APPOINTMENT_STATUS.CANCELLED) throw conflict('Esta cita está cancelada. Agenda una nueva.', 'NOT_ACTIVE');
+  assertChangeable(current, now);
   assertNewTime(current, date, timeSlot);
 
   const start = toMinutes(timeSlot);
@@ -407,9 +436,19 @@ export async function rescheduleByAdmin(id, { date, timeSlot }) {
 
 // ---------- admin ----------
 
+/**
+ * Cancels from the panel, whatever day the appointment is on. One marked as attended on a
+ * future day (a mistake) can be cancelled too: that visit stops counting for the client.
+ */
 export async function cancelByAdmin(id) {
+  const settings = await getSettingsDoc();
+  const now = businessNow(settings);
+  const current = await Appointment.findById(id, { status: 1, clientPhone: 1, date: 1 }).lean();
+  if (!current) throw notFound('Esa cita no existe.', 'APPOINTMENT_NOT_FOUND');
+  if (current.status === APPOINTMENT_STATUS.CANCELLED) throw conflict('Esta cita ya estaba cancelada.', 'NOT_ACTIVE');
+  assertChangeable(current, now);
   const updated = await Appointment.findOneAndUpdate(
-    { _id: id, status: APPOINTMENT_STATUS.CONFIRMED },
+    { _id: id, status: current.status },
     {
       $set: {
         status: APPOINTMENT_STATUS.CANCELLED,
@@ -417,32 +456,55 @@ export async function cancelByAdmin(id) {
         cancelledAt: new Date(),
         cancelledBy: 'admin',
       },
+      $unset: { completedAt: 1 },
     },
     { returnDocument: 'after', lean: true, projection: ADMIN_PROJECTION },
   );
-  if (updated) return serializeForAdmin(updated);
-  const exists = await Appointment.exists({ _id: id });
-  if (!exists) throw notFound('Esa cita no existe.', 'APPOINTMENT_NOT_FOUND');
-  throw conflict('Solo se pueden cancelar citas confirmadas.', 'NOT_ACTIVE');
+  if (!updated) throw conflict(CHANGED_MESSAGE, 'NOT_ACTIVE');
+  if (current.status === APPOINTMENT_STATUS.COMPLETED) await safeUndoVisit(updated.clientPhone);
+  return serializeForAdmin(updated);
 }
 
+const FUTURE_VISIT_MESSAGE = 'Esta cita es para otro día. Marca la asistencia ese día o reagéndala para hoy.';
+
+/** Attendance is for today or a past day: a future one cannot have been attended yet. */
 export async function completeAppointment(id) {
+  const settings = await getSettingsDoc();
+  const now = businessNow(settings);
   const updated = await Appointment.findOneAndUpdate(
-    { _id: id, status: APPOINTMENT_STATUS.CONFIRMED, kind: { $ne: 'block' } },
+    { _id: id, status: APPOINTMENT_STATUS.CONFIRMED, kind: { $ne: 'block' }, date: { $lte: now.date } },
     { $set: { status: APPOINTMENT_STATUS.COMPLETED, completedAt: new Date() } },
     { returnDocument: 'after', lean: true, projection: ADMIN_PROJECTION },
   );
   if (!updated) {
-    const existing = await Appointment.findById(id, { status: 1 }).lean();
+    const existing = await Appointment.findById(id, { status: 1, date: 1 }).lean();
     if (!existing) throw notFound('Esa cita no existe.', 'APPOINTMENT_NOT_FOUND');
     if (existing.status === APPOINTMENT_STATUS.COMPLETED) throw conflict('Esta cita ya estaba marcada como atendida.', 'ALREADY_COMPLETED');
-    throw conflict('Esta cita está cancelada; no se puede marcar asistencia.', 'CANCELLED');
+    if (existing.status === APPOINTMENT_STATUS.CANCELLED) throw conflict('Esta cita está cancelada; no se puede marcar asistencia.', 'CANCELLED');
+    if (existing.date > now.date) throw unprocessable(FUTURE_VISIT_MESSAGE, 'FUTURE_DATE');
+    throw conflict(CHANGED_MESSAGE, 'NOT_ACTIVE');
   }
   try {
     await recordVisit({ phone: updated.clientPhone, name: updated.clientName, date: updated.date });
   } catch (error) {
     console.error('[appointments] could not record visit', error);
   }
+  return serializeForAdmin(updated);
+}
+
+/** «Quitar asistencia»: an appointment marked as attended by mistake goes back to pending. */
+export async function reopenAppointment(id) {
+  const updated = await Appointment.findOneAndUpdate(
+    { _id: id, status: APPOINTMENT_STATUS.COMPLETED, ...NOT_BLOCK },
+    { $set: { status: APPOINTMENT_STATUS.CONFIRMED }, $unset: { completedAt: 1 } },
+    { returnDocument: 'after', lean: true, projection: ADMIN_PROJECTION },
+  );
+  if (!updated) {
+    const existing = await Appointment.findOne({ _id: id, ...NOT_BLOCK }, { status: 1 }).lean();
+    if (!existing) throw notFound('Esa cita no existe.', 'APPOINTMENT_NOT_FOUND');
+    throw conflict('Esta cita no está marcada como atendida.', 'NOT_COMPLETED');
+  }
+  await safeUndoVisit(updated.clientPhone);
   return serializeForAdmin(updated);
 }
 
@@ -463,60 +525,120 @@ export async function verifyCode(code, { markAttended = false } = {}) {
   const warnings = [];
   if (appointment.status === APPOINTMENT_STATUS.CANCELLED) warnings.push('Esta cita está cancelada.');
   if (!attended && appointment.status === APPOINTMENT_STATUS.COMPLETED) warnings.push('Esta cita ya fue marcada como atendida.');
-  if (appointment.date !== now.date) {
-    warnings.push(appointment.date < now.date ? 'Esta cita era para un día anterior.' : 'Esta cita es para otro día.');
+  if (appointment.date < now.date) warnings.push('Esta cita era para un día anterior.');
+  if (appointment.date > now.date) {
+    warnings.push(
+      appointment.status === APPOINTMENT_STATUS.CONFIRMED
+        ? 'Esta cita es para otro día. Para marcar la asistencia hoy, reagéndala para hoy desde Citas.'
+        : 'Esta cita es para otro día.',
+    );
   }
-  return { appointment, attended, warnings, canMarkAttended: appointment.status === APPOINTMENT_STATUS.CONFIRMED, now };
+  const canMarkAttended = appointment.status === APPOINTMENT_STATUS.CONFIRMED && appointment.date <= now.date;
+  return { appointment, attended, warnings, canMarkAttended, now };
+}
+
+const CANCELLED = APPOINTMENT_STATUS.CANCELLED;
+
+/**
+ * «Próximas»: every appointment still ahead and not cancelled (today's only while pending).
+ * Future ones marked as attended by mistake stay here, so they can be fixed.
+ */
+function upcomingFilter(now) {
+  return {
+    status: { $ne: CANCELLED },
+    $or: [{ date: { $gt: now.date } }, { date: now.date, status: APPOINTMENT_STATUS.CONFIRMED }],
+  };
+}
+
+/** Name (accents and word order ignored), phone digits or booking code. */
+function searchFilter(query) {
+  const or = [];
+  const words = nameSearchPatterns(query);
+  if (words.length) or.push({ $and: words.map((word) => ({ clientName: { $regex: word, $options: 'i' } })) });
+  const digits = query.replace(/\D/g, '').replace(/^0+/, '');
+  if (digits.length >= 3) or.push({ clientPhone: { $regex: escapeRegex(digits) } });
+  if (/^[A-Za-z0-9]{6}$/.test(query)) or.push({ bookingCode: query.toUpperCase() });
+  // Nothing searchable (only symbols): nothing matches.
+  return or.length ? { $or: or } : { _id: null };
+}
+
+// _id last keeps pages stable when two appointments share date and time (a cancelled one and its replacement).
+const ASCENDING = { date: 1, timeSlot: 1, _id: 1 };
+const DESCENDING = { date: -1, timeSlot: -1, _id: -1 };
+
+/**
+ * One page of «Todas» without a date: from today on first (soonest first), then the past
+ * (most recent first). So the landing page opens on today's clients, not on next month's.
+ */
+async function aheadThenPast(filter, now, { page, limit }) {
+  const ahead = { $and: [filter, { date: { $gte: now.date } }] };
+  const past = { $and: [filter, { date: { $lt: now.date } }] };
+  const aheadTotal = await Appointment.countDocuments(ahead);
+  const skip = (page - 1) * limit;
+  const items = [];
+  if (skip < aheadTotal) {
+    items.push(...(await Appointment.find(ahead, ADMIN_PROJECTION).sort(ASCENDING).skip(skip).limit(limit).lean()));
+  }
+  const missing = limit - items.length;
+  if (missing > 0) {
+    const pastSkip = Math.max(0, skip - aheadTotal);
+    items.push(...(await Appointment.find(past, ADMIN_PROJECTION).sort(DESCENDING).skip(pastSkip).limit(missing).lean()));
+  }
+  return items;
 }
 
 export async function listAppointments({ view, date, q, page, limit }) {
   const settings = await getSettingsDoc();
   const now = businessNow(settings);
   // Time blocks live in the calendar, not in the Citas list or its counters.
-  const filter = { kind: { $ne: 'block' } };
-  let sort = { date: 1, timeSlot: 1 };
+  const conditions = [NOT_BLOCK];
+  let sort = DESCENDING;
 
   switch (view) {
     case 'today':
-      filter.date = now.date;
+      // Same rule as its counter: today's appointments that were not cancelled.
+      conditions.push({ date: now.date, status: { $ne: CANCELLED } });
+      sort = ASCENDING;
       break;
     case 'upcoming':
-      filter.status = APPOINTMENT_STATUS.CONFIRMED;
-      filter.date = { $gte: now.date };
+      conditions.push(upcomingFilter(now));
+      sort = ASCENDING;
       break;
     case 'completed':
-      filter.status = APPOINTMENT_STATUS.COMPLETED;
-      sort = { date: -1, timeSlot: -1 };
+      conditions.push({ status: APPOINTMENT_STATUS.COMPLETED });
       break;
     case 'cancelled':
-      filter.status = APPOINTMENT_STATUS.CANCELLED;
-      sort = { date: -1, timeSlot: -1 };
+      conditions.push({ status: CANCELLED });
       break;
     default:
-      sort = { date: -1, timeSlot: -1 };
+      break;
   }
-  if (date) filter.date = view === 'upcoming' && date < now.date ? '__none__' : date;
-
+  // The date narrows the view; a date outside it (a past day in «Próximas») simply finds nothing.
+  // One day reads in time order.
+  if (date) {
+    conditions.push({ date });
+    sort = ASCENDING;
+  }
   const query = (q || '').trim();
-  if (query) {
-    const digits = query.replace(/\D/g, '');
-    const or = [{ clientName: { $regex: escapeRegex(query), $options: 'i' } }];
-    if (digits.length >= 3) or.push({ clientPhone: { $regex: escapeRegex(digits.replace(/^0+/, '')) } });
-    if (/^[A-Za-z0-9]{6}$/.test(query)) or.push({ bookingCode: query.toUpperCase() });
-    filter.$or = or;
-  }
+  if (query) conditions.push(searchFilter(query));
+  const filter = { $and: conditions };
+  const loadItems = () =>
+    view === 'all' && !date
+      ? aheadThenPast(filter, now, { page, limit })
+      : Appointment.find(filter, ADMIN_PROJECTION)
+          .sort(sort)
+          .skip((page - 1) * limit)
+          .limit(limit)
+          .lean();
 
-  const [items, total, today, upcoming, completed, cancelled] = await Promise.all([
-    Appointment.find(filter, ADMIN_PROJECTION)
-      .sort(sort)
-      .skip((page - 1) * limit)
-      .limit(limit)
-      .lean(),
+  const [items, total, today, upcoming, completed, cancelled, all] = await Promise.all([
+    loadItems(),
     Appointment.countDocuments(filter),
-    Appointment.countDocuments({ ...NOT_BLOCK, date: now.date, status: { $ne: APPOINTMENT_STATUS.CANCELLED } }),
-    Appointment.countDocuments({ ...NOT_BLOCK, status: APPOINTMENT_STATUS.CONFIRMED, date: { $gte: now.date } }),
+    Appointment.countDocuments({ ...NOT_BLOCK, date: now.date, status: { $ne: CANCELLED } }),
+    Appointment.countDocuments({ $and: [NOT_BLOCK, upcomingFilter(now)] }),
     Appointment.countDocuments({ ...NOT_BLOCK, status: APPOINTMENT_STATUS.COMPLETED }),
-    Appointment.countDocuments({ ...NOT_BLOCK, status: APPOINTMENT_STATUS.CANCELLED }),
+    Appointment.countDocuments({ ...NOT_BLOCK, status: CANCELLED }),
+    Appointment.countDocuments(NOT_BLOCK),
   ]);
 
   return {
@@ -525,7 +647,7 @@ export async function listAppointments({ view, date, q, page, limit }) {
     page,
     limit,
     pages: Math.max(1, Math.ceil(total / limit)),
-    summary: { today, upcoming, completed, cancelled },
+    summary: { all, today, upcoming, completed, cancelled },
     now,
   };
 }

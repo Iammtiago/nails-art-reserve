@@ -11,7 +11,11 @@ import { Button } from '@/components/ui/Button';
 import { Pagination } from '@/components/ui/Controls';
 import { EmptyState, ErrorState, LoadingState } from '@/components/ui/States';
 import { useToast } from '@/components/ui/Toast';
+import { ManualAppointmentModal, RescheduleModal } from '@/components/admin/calendar/AgendaModals';
+import { AppointmentDetailModal } from '@/components/admin/appointments/AppointmentDetailModal';
+import { useAppointmentActions } from '@/components/admin/appointments/useAppointmentActions';
 import { ClientCards } from './ClientCards';
+import { ClientDetailModal } from './ClientDetailModal';
 import { ClientEditModal } from './ClientEditModal';
 import { ClientSearch } from './ClientSearch';
 import { ClientsStats } from './ClientsStats';
@@ -57,6 +61,13 @@ export function ClientsDirectory() {
 
   const [query, setQuery] = useState('');
   const [editing, setEditing] = useState(null);
+  // Client whose appointments are open. While she gets a new appointment or one moves, her
+  // detail steps aside (one dialog at a time) and comes back afterwards with fresh data.
+  const [viewing, setViewing] = useState(null);
+  const [selected, setSelected] = useState(null);
+  const [moving, setMoving] = useState(null);
+  const [scheduling, setScheduling] = useState(null);
+  const [historyKey, setHistoryKey] = useState(0);
   const q = useDebouncedValue(query.trim(), 250);
   // The page belongs to the search it was chosen for, so a new search starts on page 1.
   const [paging, setPaging] = useState({ q: '', page: 1 });
@@ -93,6 +104,29 @@ export function ClientsDirectory() {
   );
 
   const businessName = settings?.businessName || 'Nails Art';
+  // «Today» from the server's latest answer (the panel may stay open overnight); settings as a fallback.
+  const [detailToday, setDetailToday] = useState('');
+  const today = detailToday || data?.now?.date || settings?.now?.date || '';
+  const reloadList = state.reload;
+
+  // Any change to one of her appointments refreshes her history and the directory figures.
+  const handleAppointmentChanged = useCallback(
+    (updated, id) => {
+      setSelected((current) => {
+        if (!current || current.id !== id) return current;
+        return updated ? { ...current, ...updated } : null;
+      });
+      setHistoryKey((k) => k + 1);
+      reloadList({ silent: true });
+    },
+    [reloadList],
+  );
+  const actions = useAppointmentActions(handleAppointmentChanged);
+
+  const startReschedule = useCallback((appointment) => {
+    setSelected(null);
+    setMoving(appointment);
+  }, []);
 
   let body;
   if (error) {
@@ -116,8 +150,8 @@ export function ClientsDirectory() {
   } else {
     body = (
       <div aria-busy={pending || undefined} className={`transition-opacity duration-200 ${pending ? 'opacity-60' : ''}`}>
-        <ClientsTable items={data.items} businessName={businessName} onCopy={copyPhone} onEdit={setEditing} onDeleted={() => state.reload({ silent: true })} />
-        <ClientCards items={data.items} businessName={businessName} onCopy={copyPhone} onEdit={setEditing} onDeleted={() => state.reload({ silent: true })} />
+        <ClientsTable items={data.items} businessName={businessName} onOpen={setViewing} onCopy={copyPhone} onEdit={setEditing} onDeleted={() => state.reload({ silent: true })} />
+        <ClientCards items={data.items} businessName={businessName} onOpen={setViewing} onCopy={copyPhone} onEdit={setEditing} onDeleted={() => state.reload({ silent: true })} />
         <Pagination page={data.page} pages={data.pages} total={data.total} onChange={changePage} />
       </div>
     );
@@ -131,6 +165,62 @@ export function ClientsDirectory() {
         {body}
       </div>
       <ClientEditModal client={editing} onClose={() => setEditing(null)} onSaved={() => state.reload({ silent: true })} />
+
+      {viewing && !moving && !scheduling ? (
+        <ClientDetailModal
+          client={viewing}
+          refreshKey={historyKey}
+          businessName={businessName}
+          busyFor={actions.busyFor}
+          disabled={Boolean(actions.busy)}
+          onNow={setDetailToday}
+          onClose={() => {
+            setViewing(null);
+            setSelected(null);
+          }}
+          onSchedule={(client) => {
+            setSelected(null);
+            setScheduling(client);
+          }}
+          onOpenAppointment={setSelected}
+          onReschedule={startReschedule}
+          onCancel={actions.cancel}
+        />
+      ) : null}
+      {selected && !moving && !scheduling ? (
+        <AppointmentDetailModal
+          appointment={selected}
+          onClose={() => setSelected(null)}
+          today={today}
+          timezone={settings?.timezone}
+          businessName={businessName}
+          busyAction={actions.busyFor(selected.id)}
+          disabled={Boolean(actions.busy)}
+          onComplete={actions.complete}
+          onCancel={actions.cancel}
+          onReschedule={startReschedule}
+          onReopen={actions.reopen}
+          onPurged={(a) => handleAppointmentChanged(null, a.id)}
+        />
+      ) : null}
+      <RescheduleModal
+        appointment={moving}
+        onClose={() => setMoving(null)}
+        onDone={() => {
+          setHistoryKey((k) => k + 1);
+          state.reload({ silent: true });
+        }}
+      />
+      <ManualAppointmentModal
+        open={Boolean(scheduling)}
+        initialDate={today}
+        initialClient={scheduling}
+        onClose={() => setScheduling(null)}
+        onCreated={() => {
+          setHistoryKey((k) => k + 1);
+          state.reload({ silent: true });
+        }}
+      />
     </>
   );
 }

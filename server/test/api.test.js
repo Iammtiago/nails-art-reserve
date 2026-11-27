@@ -3,7 +3,7 @@ import { after, before, beforeEach, describe, it } from 'node:test';
 import request from 'supertest';
 
 import { BOOKING_CODE_REGEX } from '../../shared/constants.js';
-import { CSRF, SATURDAY, TODAY, booking, resetData, startTestApp, stopTestApp } from './helpers.js';
+import { CSRF, NOW_ISO, SATURDAY, TODAY, booking, resetData, startTestApp, stopTestApp } from './helpers.js';
 
 let app;
 
@@ -16,6 +16,20 @@ after(async () => {
 });
 
 const book = (body) => request(app).post('/api/appointments').set(CSRF).send(body);
+
+// Saturday 2026-11-21 at noon in America/Caracas: SATURDAY appointments are «today» or past.
+const SATURDAY_NOON_ISO = '2026-11-21T16:00:00.000Z';
+
+/** Runs fn with the server clock pinned at iso, then puts it back on the tests' Monday. */
+async function atInstant(iso, fn) {
+  const { setFixedInstant } = await import('../lib/clock.js');
+  setFixedInstant(iso);
+  try {
+    return await fn();
+  } finally {
+    setFixedInstant(NOW_ISO);
+  }
+}
 
 async function loginAgent() {
   const agent = request.agent(app);
@@ -228,6 +242,202 @@ describe('rescheduling', () => {
     await agent.patch(`/api/admin/appointments/${a.id}/cancel`).set(CSRF);
     const cancelled = await agent.patch(`/api/admin/appointments/${a.id}/reschedule`).set(CSRF).send({ date: SATURDAY, timeSlot: '09:00' });
     assert.equal(cancelled.status, 409);
+  });
+});
+
+describe('agenda: search, views, rescheduling and client history (2026-11-27)', () => {
+  beforeEach(resetData);
+
+  /** Books on SATURDAY and marks it attended on that day, so from Monday it is a «future» attended one. */
+  async function attendedInTheFuture(agent, overrides = {}) {
+    const created = (await book(booking(overrides))).body.appointment;
+    assert.ok(created, 'booked');
+    await atInstant(SATURDAY_NOON_ISO, async () => {
+      const res = await agent.patch(`/api/admin/appointments/${created.id}/complete`).set(CSRF);
+      assert.equal(res.status, 200, JSON.stringify(res.body));
+    });
+    return created;
+  }
+
+  it('lists every appointment by default and finds names without accents, in any word order', async () => {
+    const agent = await loginAgent();
+    await book(booking({ clientName: 'Sara Rodríguez' }));
+    await book(booking({ timeSlot: '14:00', clientName: 'María José Peña', clientPhone: '04247654321' }));
+
+    const all = await agent.get('/api/admin/appointments');
+    assert.equal(all.status, 200);
+    assert.equal(all.body.total, 2, 'default view is «Todas»');
+    assert.equal(all.body.summary.all, 2);
+
+    for (const q of ['rodriguez', 'RODRÍGUEZ', 'sara rodri', 'rodriguez sara']) {
+      const res = await agent.get('/api/admin/appointments').query({ q });
+      assert.equal(res.body.total, 1, q);
+      assert.equal(res.body.items[0].clientName, 'Sara Rodríguez');
+    }
+    assert.equal((await agent.get('/api/admin/appointments').query({ q: 'maria pena' })).body.total, 1);
+    assert.equal((await agent.get('/api/admin/appointments').query({ q: 'maria sara' })).body.total, 0, 'every word must match');
+    assert.equal((await agent.get('/api/admin/appointments').query({ q: '0424 765' })).body.total, 1, 'phone digits');
+    assert.equal((await agent.get('/api/admin/appointments').query({ q: '+++' })).body.total, 0, 'only symbols');
+
+    const clients = await agent.get('/api/admin/clients').query({ q: 'pena maria' });
+    assert.equal(clients.body.total, 1);
+    assert.equal(clients.body.items[0].name, 'María José Peña');
+    assert.equal((await agent.get('/api/admin/clients').query({ q: '+++' })).body.total, 0);
+  });
+
+  it('finds a past date in «Todas», never in «Próximas»', async () => {
+    const agent = await loginAgent();
+    await book(booking());
+    await atInstant('2026-11-23T14:00:00.000Z', async () => {
+      const byDate = await agent.get('/api/admin/appointments').query({ date: SATURDAY });
+      assert.equal(byDate.body.total, 1, 'the day still shows its appointment');
+      const byName = await agent.get('/api/admin/appointments').query({ q: 'ana' });
+      assert.equal(byName.body.total, 1);
+      const upcoming = await agent.get('/api/admin/appointments').query({ view: 'upcoming', date: SATURDAY });
+      assert.equal(upcoming.body.total, 0);
+    });
+  });
+
+  it('«Próximas» shows every appointment ahead, also future ones marked attended by mistake', async () => {
+    const agent = await loginAgent();
+    await attendedInTheFuture(agent);
+    await book(booking({ timeSlot: '14:00', clientPhone: '04247654321', clientName: 'Luisa Pérez' }));
+    const cancelled = (await book(booking({ timeSlot: '16:00', clientPhone: '04247654322', clientName: 'Rosa Mora' }))).body.appointment;
+    await agent.patch(`/api/admin/appointments/${cancelled.id}/cancel`).set(CSRF);
+
+    const upcoming = await agent.get('/api/admin/appointments').query({ view: 'upcoming' });
+    assert.equal(upcoming.body.total, 2);
+    assert.equal(upcoming.body.summary.upcoming, 2);
+    assert.deepEqual(
+      upcoming.body.items.map((a) => a.timeSlot),
+      ['10:30', '14:00'],
+      'soonest first',
+    );
+  });
+
+  it('reschedules or cancels an appointment marked attended by mistake, fixing the client visits', async () => {
+    const agent = await loginAgent();
+    const a = await attendedInTheFuture(agent);
+    const { Client } = await import('../models/index.js');
+    assert.equal((await Client.findOne({ phone: '584141234567' }).lean()).completedAppointments, 1);
+
+    const moved = await agent.patch(`/api/admin/appointments/${a.id}/reschedule`).set(CSRF).send({ date: '2026-12-28', timeSlot: '15:00' });
+    assert.equal(moved.status, 200, JSON.stringify(moved.body));
+    assert.equal(moved.body.appointment.status, 'confirmed', 'back to pending');
+    assert.equal(moved.body.appointment.completedAt, null);
+    let client = await Client.findOne({ phone: '584141234567' }).lean();
+    assert.equal(client.completedAppointments, 0);
+    assert.equal(client.lastVisitDate, '');
+
+    const b = await attendedInTheFuture(agent, { timeSlot: '17:00' });
+    const cancelled = await agent.patch(`/api/admin/appointments/${b.id}/cancel`).set(CSRF);
+    assert.equal(cancelled.status, 200);
+    assert.equal(cancelled.body.appointment.status, 'cancelled');
+    client = await Client.findOne({ phone: '584141234567' }).lean();
+    assert.equal(client.completedAppointments, 0);
+    assert.equal((await agent.patch(`/api/admin/appointments/${b.id}/cancel`).set(CSRF)).status, 409, 'already cancelled');
+  });
+
+  it('«Quitar asistencia» puts an attended appointment back to pending', async () => {
+    const agent = await loginAgent();
+    const a = await attendedInTheFuture(agent);
+    const reopened = await agent.patch(`/api/admin/appointments/${a.id}/reopen`).set(CSRF);
+    assert.equal(reopened.status, 200);
+    assert.equal(reopened.body.appointment.status, 'confirmed');
+    assert.equal((await agent.patch(`/api/admin/appointments/${a.id}/reopen`).set(CSRF)).status, 409);
+    assert.equal((await request(app).patch(`/api/admin/appointments/${a.id}/reopen`).set(CSRF)).status, 401);
+    const { Client } = await import('../models/index.js');
+    assert.equal((await Client.findOne({ phone: '584141234567' }).lean()).completedAppointments, 0);
+    const clash = await book(booking({ timeSlot: '10:30', clientPhone: '04247654321', clientName: 'Otra Clienta' }));
+    assert.equal(clash.status, 409, 'its time is still held');
+  });
+
+  it('never moves or cancels a real visit (attended today or before): «Quitar asistencia» first', async () => {
+    const agent = await loginAgent();
+    const a = await attendedInTheFuture(agent);
+    await atInstant('2026-11-23T14:00:00.000Z', async () => {
+      const move = await agent.patch(`/api/admin/appointments/${a.id}/reschedule`).set(CSRF).send({ date: '2026-12-01', timeSlot: '10:00' });
+      assert.equal(move.status, 409);
+      assert.equal(move.body.code, 'ATTENDED');
+      const cancel = await agent.patch(`/api/admin/appointments/${a.id}/cancel`).set(CSRF);
+      assert.equal(cancel.status, 409);
+      const { Appointment, Client } = await import('../models/index.js');
+      const doc = await Appointment.findById(a.id).lean();
+      assert.equal(doc.status, 'completed', 'the visit is untouched');
+      assert.ok(doc.completedAt);
+      assert.equal((await Client.findOne({ phone: '584141234567' }).lean()).completedAppointments, 1);
+
+      assert.equal((await agent.patch(`/api/admin/appointments/${a.id}/reopen`).set(CSRF)).status, 200);
+      assert.equal((await agent.patch(`/api/admin/appointments/${a.id}/complete`).set(CSRF)).status, 200, 'and it can be redone');
+    });
+  });
+
+  it('opens «Todas» on today and what comes next, then the past; «Hoy» matches its counter', async () => {
+    const agent = await loginAgent();
+    const past = (await book(booking({ date: TODAY, timeSlot: '14:00' }))).body.appointment;
+    const later = (await book(booking({ date: '2026-11-25', timeSlot: '15:00', clientPhone: '04247654321', clientName: 'Luisa Pérez' }))).body.appointment;
+    const sat = (await book(booking({ clientPhone: '04247654322', clientName: 'Rosa Mora' }))).body.appointment;
+    const cancelled = (await book(booking({ date: '2026-11-25', timeSlot: '17:00', clientPhone: '04247654323', clientName: 'Eva Gil' }))).body.appointment;
+    await agent.patch(`/api/admin/appointments/${cancelled.id}/cancel`).set(CSRF);
+
+    await atInstant('2026-11-25T13:00:00.000Z', async () => {
+      // Wednesday 9:00: today's two first (soonest first), then Saturday, then the past.
+      const all = await agent.get('/api/admin/appointments');
+      assert.deepEqual(
+        all.body.items.map((x) => x.id),
+        [later.id, cancelled.id, sat.id, past.id],
+      );
+      const page2 = await agent.get('/api/admin/appointments').query({ page: 2, limit: 3 });
+      assert.deepEqual(page2.body.items.map((x) => x.id), [past.id], 'pages continue into the past');
+      const today = await agent.get('/api/admin/appointments').query({ view: 'today' });
+      assert.equal(today.body.total, 1, 'cancelled ones are not in «Hoy»');
+      assert.equal(today.body.summary.today, 1);
+    });
+  });
+
+  it('moves an appointment from any day: a missed past one, two months ahead', async () => {
+    const agent = await loginAgent();
+    const a = (await book(booking())).body.appointment;
+    await atInstant('2026-11-24T14:00:00.000Z', async () => {
+      const far = await agent.patch(`/api/admin/appointments/${a.id}/reschedule`).set(CSRF).send({ date: '2027-01-25', timeSlot: '09:00' });
+      assert.equal(far.status, 200, JSON.stringify(far.body));
+      assert.equal(far.body.appointment.date, '2027-01-25');
+    });
+  });
+
+  it('shows a client with her history and her next appointment', async () => {
+    const agent = await loginAgent();
+    const first = (await book(booking())).body.appointment;
+    await agent.patch(`/api/admin/appointments/${first.id}/reschedule`).set(CSRF).send({ date: '2026-11-28', timeSlot: '10:00' });
+    const sooner = (await book(booking({ date: '2026-11-25', timeSlot: '15:00' }))).body.appointment;
+    const other = (await book(booking({ timeSlot: '14:00', clientPhone: '04247654321', clientName: 'Luisa Pérez' }))).body.appointment;
+
+    const list = await agent.get('/api/admin/clients');
+    const ana = list.body.items.find((c) => c.phone === '584141234567');
+    assert.equal(ana.nextAppointment.id, sooner.id, 'the soonest pending one');
+    assert.equal(list.body.items.find((c) => c.phone === '584247654321').nextAppointment.id, other.id);
+
+    const detail = await agent.get(`/api/admin/clients/${ana.id}`);
+    assert.equal(detail.status, 200);
+    assert.equal(detail.body.client.name, 'Ana Ruiz');
+    assert.equal(detail.body.appointments.length, 2, 'only her appointments');
+    assert.deepEqual(
+      detail.body.appointments.map((x) => x.date),
+      ['2026-11-28', '2026-11-25'],
+      'newest first',
+    );
+    assert.equal(detail.body.nextAppointment.id, sooner.id);
+    assert.equal(detail.body.appointments[0].qrDataUrl, undefined);
+    assert.equal(detail.body.now.date, TODAY);
+    assert.equal((await agent.get('/api/admin/clients/aaaaaaaaaaaaaaaaaaaaaaaa')).status, 404);
+
+    // A future one marked attended by mistake still counts as her next appointment.
+    const luisa = list.body.items.find((c) => c.phone === '584247654321');
+    await atInstant(SATURDAY_NOON_ISO, () => agent.patch(`/api/admin/appointments/${other.id}/complete`).set(CSRF));
+    const mistaken = await agent.get(`/api/admin/clients/${luisa.id}`);
+    assert.equal(mistaken.body.nextAppointment.id, other.id);
+    assert.equal(mistaken.body.nextAppointment.status, 'completed');
+    assert.equal((await request(app).get(`/api/admin/clients/${ana.id}`)).status, 401);
   });
 });
 
@@ -473,15 +683,22 @@ describe('admin', () => {
 
     const lookup = await agent.post('/api/appointments/verify').set(CSRF).send({ code: created.bookingCode.toLowerCase() });
     assert.equal(lookup.status, 200);
-    assert.equal(lookup.body.canMarkAttended, true);
-    assert.ok(lookup.body.warnings.includes('Esta cita es para otro día.'));
+    assert.equal(lookup.body.canMarkAttended, false, 'a future appointment cannot be attended yet');
+    assert.ok(lookup.body.warnings.some((w) => w.startsWith('Esta cita es para otro día.')));
+    const early = await agent.post('/api/appointments/verify').set(CSRF).send({ code: created.bookingCode, markAttended: true });
+    assert.equal(early.status, 422);
+    assert.equal(early.body.code, 'FUTURE_DATE');
 
-    const attend = await agent.post('/api/appointments/verify').set(CSRF).send({ code: created.bookingCode, markAttended: true });
-    assert.equal(attend.status, 200);
-    assert.equal(attend.body.appointment.status, 'completed');
+    await atInstant(SATURDAY_NOON_ISO, async () => {
+      const onTheDay = await agent.post('/api/appointments/verify').set(CSRF).send({ code: created.bookingCode });
+      assert.equal(onTheDay.body.canMarkAttended, true);
+      const attend = await agent.post('/api/appointments/verify').set(CSRF).send({ code: created.bookingCode, markAttended: true });
+      assert.equal(attend.status, 200);
+      assert.equal(attend.body.appointment.status, 'completed');
 
-    const twice = await agent.post('/api/appointments/verify').set(CSRF).send({ code: created.bookingCode, markAttended: true });
-    assert.equal(twice.status, 409);
+      const twice = await agent.post('/api/appointments/verify').set(CSRF).send({ code: created.bookingCode, markAttended: true });
+      assert.equal(twice.status, 409);
+    });
 
     const clients = await agent.get('/api/admin/clients?q=ana');
     assert.equal(clients.status, 200);
@@ -504,8 +721,11 @@ describe('admin', () => {
     assert.equal(upcoming.body.summary.upcoming, 2);
 
     assert.equal((await agent.patch(`/api/admin/appointments/${a.id}/cancel`).set(CSRF)).status, 200);
-    assert.equal((await agent.patch(`/api/admin/appointments/${b.id}/complete`).set(CSRF)).status, 200);
-    assert.equal((await agent.patch(`/api/admin/appointments/${a.id}/complete`).set(CSRF)).status, 409);
+    assert.equal((await agent.patch(`/api/admin/appointments/${b.id}/complete`).set(CSRF)).status, 422, 'not on a future day');
+    await atInstant(SATURDAY_NOON_ISO, async () => {
+      assert.equal((await agent.patch(`/api/admin/appointments/${b.id}/complete`).set(CSRF)).status, 200);
+      assert.equal((await agent.patch(`/api/admin/appointments/${a.id}/complete`).set(CSRF)).status, 409);
+    });
 
     const cancelled = await agent.get('/api/admin/appointments?view=cancelled');
     assert.equal(cancelled.body.total, 1);

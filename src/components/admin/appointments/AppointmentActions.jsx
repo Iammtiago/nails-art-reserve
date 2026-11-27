@@ -4,6 +4,7 @@ import { CalendarClock, CheckCircle2, CircleX, MessageCircle } from 'lucide-reac
 import { APPOINTMENT_STATUS } from '@shared/constants.js';
 import { Button } from '@/components/ui/Button';
 import { SuperDeleteButton } from '@/components/admin/SuperMode';
+import { canMarkAttended } from './appointmentUtils';
 
 /** «Asistió»: soft button with the success palette. */
 export const ATTENDED_CLASSES = 'bg-success-soft text-success hover:bg-success-soft hover:brightness-95';
@@ -27,11 +28,13 @@ export function WhatsAppIconLink({ href, label, className = '' }) {
 }
 
 /**
- * Row/card actions. «Asistió» and «Cancelar» only for confirmed appointments; WhatsApp always.
+ * Row/card actions. «Cancelar» and «Reagendar» for confirmed appointments, «Asistió» only from
+ * their day on (never on a future one); WhatsApp always. Attended ones are fixed from the detail.
  * compactOnLg: icon-only buttons between lg and xl, where the table is narrow.
  */
-export function AppointmentActions({ appointment, waHref, busyAction, disabled = false, onComplete, onCancel, onReschedule, onPurged, compactOnLg = false, className = '' }) {
+export function AppointmentActions({ appointment, today, waHref, busyAction, disabled = false, onComplete, onCancel, onReschedule, onPurged, compactOnLg = false, className = '' }) {
   const confirmed = appointment.status === APPOINTMENT_STATUS.CONFIRMED;
+  const attendable = canMarkAttended(appointment, today);
   const labelClass = compactOnLg ? 'lg:max-xl:sr-only' : '';
   const completeLabel = `Marcar que ${appointment.clientName} asistió`;
   const cancelLabel = `Cancelar la cita de ${appointment.clientName}`;
@@ -41,19 +44,21 @@ export function AppointmentActions({ appointment, waHref, busyAction, disabled =
     <div className={`flex flex-wrap items-center gap-1.5 ${className}`}>
       {confirmed ? (
         <>
-          <Button
-            size="sm"
-            variant="soft"
-            icon={CheckCircle2}
-            loading={busyAction === 'complete'}
-            disabled={disabled}
-            onClick={() => onComplete(appointment)}
-            aria-label={completeLabel}
-            title={completeLabel}
-            className={`min-h-[44px] ${ATTENDED_CLASSES}`}
-          >
-            <span className={labelClass}>Asistió</span>
-          </Button>
+          {attendable ? (
+            <Button
+              size="sm"
+              variant="soft"
+              icon={CheckCircle2}
+              loading={busyAction === 'complete'}
+              disabled={disabled}
+              onClick={() => onComplete(appointment)}
+              aria-label={completeLabel}
+              title={completeLabel}
+              className={`min-h-[44px] ${ATTENDED_CLASSES}`}
+            >
+              <span className={labelClass}>Asistió</span>
+            </Button>
+          ) : null}
           <Button
             size="sm"
             variant="ghost"

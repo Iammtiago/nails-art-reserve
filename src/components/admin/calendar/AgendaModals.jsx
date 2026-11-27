@@ -5,8 +5,9 @@
 
 import { CalendarClock, CalendarPlus, Lock } from 'lucide-react';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { LIMITS, TICK_MINUTES } from '@shared/constants.js';
+import { APPOINTMENT_STATUS, LIMITS, TICK_MINUTES } from '@shared/constants.js';
 import { formatDateLong, formatDuration, formatTime } from '@shared/format.js';
+import { formatPhone } from '@shared/phone.js';
 import { candidateStarts, getDayConfig, ticksFor } from '@shared/schedule.js';
 import { adminAppointmentSchema, adminRescheduleSchema, fieldErrorsFor, timeBlockSchema } from '@shared/schemas.js';
 import { guessMeridiem, partsToTime, toMinutes, toTime } from '@shared/time.js';
@@ -222,10 +223,17 @@ function TypedTime({ value, onChange, error, hint }) {
 
 // ---------- Nueva cita ----------
 
-function ManualForm({ initialDate, initialTime = null, onDone, onCancel }) {
+function ManualForm({ initialDate, initialTime = null, initialClient = null, onDone, onCancel }) {
   const { settings, handleError } = useAdmin();
   const services = (settings?.services || []).filter((s) => s.isActive !== false);
-  const [form, setForm] = useState({ serviceKey: services[0]?.key || '', date: initialDate, timeSlot: initialTime || '', clientName: '', clientPhone: '' });
+  const [form, setForm] = useState({
+    serviceKey: services[0]?.key || '',
+    date: initialDate,
+    timeSlot: initialTime || '',
+    // Chosen from Clientes: her name and phone come filled in.
+    clientName: initialClient?.name || '',
+    clientPhone: initialClient?.phone ? formatPhone(initialClient.phone) : '',
+  });
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const { occupied, now } = useOccupied(form.date);
@@ -341,17 +349,25 @@ function ManualDone({ appointment, onClose }) {
   );
 }
 
-export function ManualAppointmentModal({ open, initialDate, initialTime = null, onClose, onCreated }) {
+export function ManualAppointmentModal({ open, initialDate, initialTime = null, initialClient = null, onClose, onCreated }) {
   const [done, setDone] = useState(null);
   useEffect(() => {
     if (!open) setDone(null);
   }, [open]);
   return (
-    <Modal open={open} onClose={onClose} title={done ? 'Listo' : 'Nueva cita'} description={done ? undefined : 'Para citas por teléfono, WhatsApp o en persona. Puedes usar cualquier hora libre.'} size="lg" placement="top">
+    <Modal
+      open={open}
+      onClose={onClose}
+      title={done ? 'Listo' : initialClient ? `Nueva cita para ${initialClient.name}` : 'Nueva cita'}
+      description={done ? undefined : 'Para citas por teléfono, WhatsApp o en persona. Puedes usar cualquier día y hora libre.'}
+      size="lg"
+      placement="top"
+    >
       {open && !done ? (
         <ManualForm
           initialDate={initialDate}
           initialTime={initialTime}
+          initialClient={initialClient}
           onCancel={onClose}
           onDone={(appointment) => {
             setDone(appointment);
@@ -369,11 +385,22 @@ export function ManualAppointmentModal({ open, initialDate, initialTime = null, 
 function RescheduleForm({ appointment, onDone, onCancel }) {
   const { settings, handleError } = useAdmin();
   const toast = useToast();
-  const [form, setForm] = useState(() => ({ date: appointment.date, timeSlot: '' }));
+  // A past appointment (missed, or attended by mistake) starts on today: the past cannot be booked.
+  const [form, setForm] = useState(() => {
+    const today = settings?.now?.date;
+    return { date: today && appointment.date < today ? today : appointment.date, timeSlot: '' };
+  });
+  const attended = appointment.status === APPOINTMENT_STATUS.COMPLETED;
   const [errors, setErrors] = useState({});
   const [saving, setSaving] = useState(false);
   const { occupied, now } = useOccupied(form.date, appointment.id);
   const duration = appointment.durationMinutes || toMinutes(appointment.endTime) - toMinutes(appointment.timeSlot);
+
+  // The panel's settings may be from yesterday (left open overnight): the server's «now» wins.
+  useEffect(() => {
+    if (now?.date && form.date < now.date) setForm((current) => ({ ...current, date: now.date, timeSlot: '' }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [now?.date]);
 
   const slots = useMemo(() => {
     const day = getDayConfig(settings?.workingHours, form.date);
@@ -430,6 +457,11 @@ function RescheduleForm({ appointment, onDone, onCancel }) {
         <p className="mt-1 text-sm text-ink-2">
           {appointment.clientName} · {appointment.serviceName} · {formatDuration(duration)}
         </p>
+        {attended ? (
+          <p className="mt-2 rounded-xl bg-warning-soft px-3 py-2 text-xs font-medium text-warning">
+            Está marcada como atendida. Al reagendarla vuelve a quedar pendiente.
+          </p>
+        ) : null}
       </div>
       <Field label="Nueva fecha" error={errors.date}>
         {(p) => <Input {...p} type="date" value={form.date} min={now?.date} onChange={(e) => set('date', e.target.value)} />}
@@ -460,7 +492,14 @@ function RescheduleForm({ appointment, onDone, onCancel }) {
 /** Moves a confirmed appointment to another date or time. onDone(updated | null, id). */
 export function RescheduleModal({ appointment, onClose, onDone }) {
   return (
-    <Modal open={Boolean(appointment)} onClose={onClose} title="Reagendar cita" description="Elige la nueva fecha y hora. Puedes usar cualquier hora libre." size="lg" placement="top">
+    <Modal
+      open={Boolean(appointment)}
+      onClose={onClose}
+      title="Reagendar cita"
+      description="Elige la nueva fecha y hora: cualquier día desde hoy, aunque esté lejos, y cualquier hora libre."
+      size="lg"
+      placement="top"
+    >
       {appointment ? (
         <RescheduleForm
           key={appointment.id}

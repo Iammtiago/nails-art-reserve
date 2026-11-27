@@ -1,9 +1,9 @@
 'use client';
 
-import { ClientActions, ClientAvatar, ClientTag, DateOrDash, PhoneText } from './ClientBits';
+import { ClientActions, ClientAvatar, ClientTag, DateOrDash, NextDate, PhoneText } from './ClientBits';
 import { staggerDelay } from './clientUtils';
 
-function ClientRow({ client, index, businessName, onCopy, onEdit, onDeleted }) {
+function ClientRow({ client, index, businessName, onOpen, onCopy, onEdit, onDeleted }) {
   return (
     <tr className="enter transition-colors hover:bg-surface/70" style={staggerDelay(index, 30)}>
       {/* w-full + max-w-0 lets the name truncate while the other columns keep their width. */}
@@ -11,9 +11,14 @@ function ClientRow({ client, index, businessName, onCopy, onEdit, onDeleted }) {
         <div className="flex min-w-0 items-center gap-3">
           <ClientAvatar name={client.name} size="sm" />
           <div className="min-w-0">
-            <p className="truncate font-semibold text-ink" title={client.name}>
+            <button
+              type="button"
+              onClick={() => onOpen(client)}
+              title={`Ver las citas de ${client.name}`}
+              className="block max-w-full truncate text-left font-semibold text-ink underline-offset-4 hover:text-primary-ink hover:underline"
+            >
               {client.name}
-            </p>
+            </button>
             <div className="mt-0.5 empty:hidden">
               <ClientTag client={client} />
             </div>
@@ -25,23 +30,26 @@ function ClientRow({ client, index, businessName, onCopy, onEdit, onDeleted }) {
       </td>
       <td className="px-2 py-3 text-center font-semibold tabular-nums text-ink">{client.totalAppointments}</td>
       <td className="px-2 py-3 text-center font-semibold tabular-nums text-ink">{client.completedAppointments}</td>
-      <td className="whitespace-nowrap px-2 py-3 text-ink-2">
+      <td className="hidden whitespace-nowrap px-2 py-3 text-ink-2 2xl:table-cell">
         <DateOrDash date={client.lastAppointmentDate} />
       </td>
       <td className="whitespace-nowrap px-2 py-3 text-ink-2">
         <DateOrDash date={client.lastVisitDate} />
       </td>
+      <td className="whitespace-nowrap px-2 py-3">
+        <NextDate next={client.nextAppointment} stacked />
+      </td>
       <td className="py-2 pl-2 pr-4">
-        <ClientActions client={client} businessName={businessName} onCopy={onCopy} onEdit={onEdit} onDeleted={onDeleted} compact />
+        <ClientActions client={client} businessName={businessName} onOpen={onOpen} onCopy={onCopy} onEdit={onEdit} onDeleted={onDeleted} compact />
       </td>
     </tr>
   );
 }
 
-/** Desktop directory (lg and up). */
-export function ClientsTable({ items, businessName, onCopy, onEdit, onDeleted }) {
+/** Desktop directory (xl and up; below it the cards read better than a squeezed table). */
+export function ClientsTable({ items, businessName, onOpen, onCopy, onEdit, onDeleted }) {
   return (
-    <div className="glass enter hidden overflow-hidden lg:block" style={{ animationDelay: '120ms' }}>
+    <div className="glass enter hidden overflow-hidden xl:block" style={{ animationDelay: '120ms' }}>
       <div className="overflow-x-auto">
         <table className="w-full text-left text-sm">
           <caption className="sr-only">Directorio de clientas</caption>
@@ -59,11 +67,14 @@ export function ClientsTable({ items, businessName, onCopy, onEdit, onDeleted })
               <th scope="col" className="px-2 py-3 text-center font-semibold">
                 Asistencias
               </th>
-              <th scope="col" className="whitespace-nowrap px-2 py-3 font-semibold">
+              <th scope="col" className="hidden whitespace-nowrap px-2 py-3 font-semibold 2xl:table-cell">
                 Última cita
               </th>
               <th scope="col" className="whitespace-nowrap px-2 py-3 font-semibold">
                 Última visita
+              </th>
+              <th scope="col" className="whitespace-nowrap px-2 py-3 font-semibold">
+                Próxima cita
               </th>
               <th scope="col" className="py-3 pl-2 pr-5 text-right font-semibold">
                 Acciones
@@ -72,7 +83,7 @@ export function ClientsTable({ items, businessName, onCopy, onEdit, onDeleted })
           </thead>
           <tbody className="divide-y divide-line">
             {items.map((client, index) => (
-              <ClientRow key={client.id} client={client} index={index} businessName={businessName} onCopy={onCopy} onEdit={onEdit} onDeleted={onDeleted} />
+              <ClientRow key={client.id} client={client} index={index} businessName={businessName} onOpen={onOpen} onCopy={onCopy} onEdit={onEdit} onDeleted={onDeleted} />
             ))}
           </tbody>
         </table>

@@ -1,6 +1,6 @@
 'use client';
 
-import { CalendarClock, CheckCircle2, CircleX, LockOpen, MessageCircle } from 'lucide-react';
+import { CalendarClock, CheckCircle2, CircleX, LockOpen, MessageCircle, Undo2 } from 'lucide-react';
 import { APPOINTMENT_STATUS } from '@shared/constants.js';
 import { formatDateLong, formatDayMonth, formatDuration, formatTime, formatTimeRange } from '@shared/format.js';
 import { formatPhone } from '@shared/phone.js';
@@ -10,7 +10,7 @@ import { Modal } from '@/components/ui/Modal';
 import { SuperDeleteButton } from '@/components/admin/SuperMode';
 import { AppointmentTicket } from '@/components/admin/TicketDownload';
 import { ATTENDED_CLASSES, CANCEL_CLASSES } from './AppointmentActions';
-import { cancelledByLabel, contactHref, formatInstant } from './appointmentUtils';
+import { canChangeAppointment, canMarkAttended, cancelledByLabel, contactHref, formatInstant } from './appointmentUtils';
 
 function detailRows(appointment, timezone) {
   if (appointment.kind === 'block') return [];
@@ -49,8 +49,11 @@ function DetailRow({ row }) {
   );
 }
 
-function DetailFooter({ appointment, waHref, busyAction, disabled, onComplete, onCancel, onReschedule, onPurged }) {
+function DetailFooter({ appointment, today, waHref, busyAction, disabled, onComplete, onCancel, onReschedule, onReopen, onPurged }) {
   const confirmed = appointment.status === APPOINTMENT_STATUS.CONFIRMED;
+  // Any day (past, today or months ahead): pending and attended appointments can move or be cancelled.
+  const changeable = canChangeAppointment(appointment, today);
+  const attended = appointment.status === APPOINTMENT_STATUS.COMPLETED;
   const purge = <SuperDeleteButton entity="appointment" item={appointment} onDeleted={onPurged} className="w-full sm:mr-auto sm:w-auto" />;
   if (appointment.kind === 'block') {
     return (
@@ -67,12 +70,12 @@ function DetailFooter({ appointment, waHref, busyAction, disabled, onComplete, o
   return (
     <div className="flex flex-col-reverse gap-2 sm:flex-row sm:flex-wrap sm:justify-end">
       {purge}
-      {confirmed ? (
+      {changeable ? (
         <Button variant="ghost" icon={CircleX} className={CANCEL_CLASSES} loading={busyAction === 'cancel'} disabled={disabled} onClick={() => onCancel(appointment)}>
           Cancelar cita
         </Button>
       ) : null}
-      {confirmed && onReschedule ? (
+      {changeable && onReschedule ? (
         <Button variant="secondary" icon={CalendarClock} disabled={disabled} onClick={() => onReschedule(appointment)}>
           Reagendar
         </Button>
@@ -80,7 +83,12 @@ function DetailFooter({ appointment, waHref, busyAction, disabled, onComplete, o
       <Button variant="whatsapp" icon={MessageCircle} href={waHref} target="_blank" rel="noopener noreferrer">
         Escribir por WhatsApp
       </Button>
-      {confirmed ? (
+      {attended && onReopen ? (
+        <Button variant="secondary" icon={Undo2} loading={busyAction === 'reopen'} disabled={disabled} onClick={() => onReopen(appointment)}>
+          Quitar asistencia
+        </Button>
+      ) : null}
+      {canMarkAttended(appointment, today) ? (
         <Button variant="soft" icon={CheckCircle2} className={ATTENDED_CLASSES} loading={busyAction === 'complete'} disabled={disabled} onClick={() => onComplete(appointment)}>
           Asistió
         </Button>
@@ -93,8 +101,10 @@ function DetailFooter({ appointment, waHref, busyAction, disabled, onComplete, o
  * Full detail of one appointment with the same actions as the list.
  * Works with list items (all fields) and calendar items (no created/cancelled/completed instants).
  */
-export function AppointmentDetailModal({ appointment, onClose, today, timezone, businessName, busyAction = null, disabled = false, onComplete, onCancel, onReschedule, onPurged }) {
+export function AppointmentDetailModal({ appointment, onClose, today, timezone, businessName, busyAction = null, disabled = false, onComplete, onCancel, onReschedule, onReopen, onPurged }) {
   const isToday = Boolean(today) && appointment.date === today;
+  const isFuture = Boolean(today) && appointment.date > today;
+  const isBooking = appointment.kind !== 'block';
   const waHref = contactHref(appointment, businessName);
 
   return (
@@ -110,12 +120,14 @@ export function AppointmentDetailModal({ appointment, onClose, today, timezone, 
       footer={
         <DetailFooter
           appointment={appointment}
+          today={today}
           waHref={waHref}
           busyAction={busyAction}
           disabled={disabled}
           onComplete={onComplete}
           onCancel={onCancel}
           onReschedule={onReschedule}
+          onReopen={onReopen}
           onPurged={onPurged}
         />
       }
@@ -127,6 +139,14 @@ export function AppointmentDetailModal({ appointment, onClose, today, timezone, 
         </div>
         <p className="mt-3 font-display text-2xl font-semibold leading-tight text-ink">{formatTimeRange(appointment.timeSlot, appointment.endTime)}</p>
         <p className="mt-1 text-base font-semibold text-accent-ink">{formatDateLong(appointment.date, { withYear: true })}</p>
+        {isBooking && isFuture && appointment.status === APPOINTMENT_STATUS.CONFIRMED ? (
+          <p className="mt-2 text-xs text-ink-2">«Asistió» aparece el día de la cita.</p>
+        ) : null}
+        {isBooking && isFuture && appointment.status === APPOINTMENT_STATUS.COMPLETED ? (
+          <p className="mt-2 rounded-xl bg-warning-soft px-3 py-2 text-xs font-medium text-warning">
+            Está marcada como atendida pero aún no llega su día. Si fue un error, toca «Quitar asistencia».
+          </p>
+        ) : null}
       </div>
       <dl className="mt-2 divide-y divide-line/60">
         {detailRows(appointment, timezone).map((row) => (

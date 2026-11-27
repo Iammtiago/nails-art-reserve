@@ -1,8 +1,28 @@
 // Small display helpers shared by the Citas list, the detail modal and the calendar.
 
-import { DEFAULT_TIMEZONE } from '@shared/constants.js';
+import { APPOINTMENT_STATUS, DEFAULT_TIMEZONE } from '@shared/constants.js';
 import { formatDayMonth, formatWeekdayDayMonth } from '@shared/format.js';
 import { clientContactText, whatsappLink } from '@shared/whatsapp.js';
+
+/**
+ * A client's appointment that can be moved or cancelled from the panel: any pending one, whatever
+ * its day, and one marked attended on a future day (a mistaken «Asistió»). A real visit (attended
+ * today or before) stays in her history: only «Quitar asistencia» touches it. Mirrors the server.
+ */
+export function canChangeAppointment(appointment, today) {
+  if (appointment.kind === 'block') return false;
+  if (appointment.status === APPOINTMENT_STATUS.CONFIRMED) return true;
+  return appointment.status === APPOINTMENT_STATUS.COMPLETED && Boolean(today) && appointment.date > today;
+}
+
+/** «Asistió» only on the day of the appointment or later: nobody attends a future one. */
+export function canMarkAttended(appointment, today) {
+  return (
+    appointment.kind !== 'block' &&
+    appointment.status === APPOINTMENT_STATUS.CONFIRMED &&
+    (!today || appointment.date <= today)
+  );
+}
 
 /** «Hoy» when the date is the business' today, otherwise «21 nov». */
 export function dateLabel(date, today) {

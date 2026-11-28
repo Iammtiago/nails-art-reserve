@@ -9,6 +9,7 @@ import { buildThemeTokens, contrastRatio, paletteReport } from '../color.js';
 import { accountSchema, changePasswordSchema, createAppointmentSchema, settingsUpdateSchema, verifySchema } from '../schemas.js';
 import { formatDateLong, formatTime } from '../format.js';
 import { bookingConfirmationText, whatsappLink } from '../whatsapp.js';
+import { foldText, nameSearchPatterns } from '../search.js';
 
 const settings = structuredClone(DEFAULT_SETTINGS);
 const SATURDAY = '2026-11-21';
@@ -254,5 +255,28 @@ describe('hour and minutes typed in two boxes', () => {
     assert.match(partsToTime('5', '', 'pm').error, /minutos/);
     assert.match(partsToTime('5', '75', 'pm').error, /00 a 59/);
     assert.match(partsToTime('5', '40', 'pm').error, /15 minutos/);
+  });
+});
+
+describe('name search', () => {
+  const matches = (query, name) => nameSearchPatterns(query).every((p) => new RegExp(p, 'i').test(name));
+
+  it('ignores accents, case and word order', () => {
+    assert.equal(foldText('María Peña'), 'maria pena');
+    assert.ok(matches('rodriguez', 'Sara Rodríguez'));
+    assert.ok(matches('RODRÍGUEZ sara', 'Sara Rodriguez'));
+    assert.ok(matches('maria elena', 'Dra. María Elena'));
+    assert.ok(matches('pena', 'PEÑA'));
+    assert.ok(!matches('maria sara', 'Sara Rodríguez'));
+    const decomposed = 'Sara Rodríguez'.normalize('NFD');
+    assert.ok(matches('rodriguez', decomposed), 'accents stored decomposed');
+    assert.ok(matches('Rodríguez', decomposed));
+  });
+
+  it('escapes symbols and caps the number of words', () => {
+    assert.ok(matches('dra.', 'Dra. Ana'));
+    assert.ok(!matches('dra.', 'Draxa'));
+    assert.deepEqual(nameSearchPatterns('   '), []);
+    assert.equal(nameSearchPatterns('a b c d e f g h').length, 6);
   });
 });

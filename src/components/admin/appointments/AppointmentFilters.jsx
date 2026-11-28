@@ -5,13 +5,14 @@ import { IconButton } from '@/components/ui/Button';
 import { Segmented } from '@/components/ui/Controls';
 import { Field, Input } from '@/components/ui/Field';
 
+// Order asked by Tiago (2026-11-27): «Todas» first and by default, «Hoy» next to it, «Próximas» last.
 function viewOptions(summary) {
   return [
+    { value: 'all', label: 'Todas', count: summary?.all },
     { value: 'today', label: 'Hoy', count: summary?.today },
-    { value: 'upcoming', label: 'Próximas', count: summary?.upcoming },
     { value: 'completed', label: 'Atendidas', count: summary?.completed },
     { value: 'cancelled', label: 'Canceladas', count: summary?.cancelled },
-    { value: 'all', label: 'Todas' },
+    { value: 'upcoming', label: 'Próximas', count: summary?.upcoming },
   ];
 }
 
@@ -19,7 +20,8 @@ function viewOptions(summary) {
 export function AppointmentFilters({ view, onViewChange, summary, search, onSearchChange, date, onDateChange }) {
   return (
     <div className="glass enter mb-4 p-3 sm:p-4" style={{ animationDelay: '120ms' }}>
-      <Segmented options={viewOptions(summary)} value={view} onChange={onViewChange} ariaLabel="Filtrar citas" />
+      {/* Five tabs do not fit a phone: they wrap instead of hiding «Próximas» off-screen. */}
+      <Segmented options={viewOptions(summary)} value={view} onChange={onViewChange} ariaLabel="Filtrar citas" className="max-sm:flex-wrap" />
       <div className="mt-3 grid gap-3 sm:grid-cols-[minmax(0,1fr)_16rem]">
         <Field label="Buscar">
           {(p) => (

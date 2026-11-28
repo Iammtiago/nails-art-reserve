@@ -81,15 +81,24 @@ Actualización parcial con cualquiera de: `businessName`, `phone`, `instagramUrl
 Configuración completa (incluye servicios inactivos y motivos de días bloqueados).
 
 ### `POST /api/appointments/verify`
-`{ code, markAttended? }` → `{ appointment, attended, warnings: string[], canMarkAttended, now }`. `404 CODE_NOT_FOUND`; con `markAttended` sobre una cita ya atendida o cancelada → `409`.
+`{ code, markAttended? }` → `{ appointment, attended, warnings: string[], canMarkAttended, now }`. `404 CODE_NOT_FOUND`; con `markAttended` sobre una cita ya atendida o cancelada → `409`; sobre una cita de un día futuro → `422 FUTURE_DATE` (`canMarkAttended` es `false` hasta su día).
 
 ### `GET /api/admin/appointments?view=&date=&q=&page=&limit=`
-`view`: `today` · `upcoming` (por defecto) · `completed` · `cancelled` · `all`. `q` busca por nombre, teléfono o código.
+`view`: `all` (por defecto desde el 2026-11-27; sin fecha, primero de hoy en adelante y luego el pasado) · `today` (sin las canceladas, como su contador) · `completed` · `cancelled` · `upcoming`. `upcoming` = toda cita no cancelada de un día posterior, más las de hoy aún pendientes (incluye las de días futuros marcadas como atendidas por error, para poder corregirlas). `date` acota la vista (una fecha fuera de ella no encuentra nada). `q` busca por nombre sin importar tildes ni el orden de las palabras (todas deben aparecer), por dígitos del teléfono (3 o más) o por código.
 Ítems: `{ id, clientName, clientPhone, serviceKey, serviceName, durationMinutes, date, timeSlot, endTime, bookingCode, status, cancelledAt, cancelledBy, completedAt, createdAt }`.
-`summary: { today, upcoming, completed, cancelled }`. Incluye `now` (fecha y hora del salón, mismo formato que en `GET /api/settings`) para que el panel sepa qué es «hoy».
+`summary: { all, today, upcoming, completed, cancelled }`. Incluye `now` (fecha y hora del salón, mismo formato que en `GET /api/settings`) para que el panel sepa qué es «hoy».
 
-### `PATCH /api/admin/appointments/:id/complete` · `PATCH /api/admin/appointments/:id/cancel`
-`{ appointment }`. `409` si la cita no está confirmada.
+### `PATCH /api/admin/appointments/:id/complete`
+`{ appointment }`. `409` si ya estaba atendida o cancelada; `422 FUTURE_DATE` si la cita es de un día futuro.
+
+### `PATCH /api/admin/appointments/:id/cancel`
+`{ appointment }`. Cancela una cita pendiente de cualquier día (también libera horarios ocupados), o una de un día futuro marcada como atendida por error (se le resta esa visita a la clienta). `409 ATTENDED` si es una visita real (atendida hoy o antes: primero «Quitar asistencia»), `409` si ya estaba cancelada.
+
+### `PATCH /api/admin/appointments/:id/reopen` («Quitar asistencia»)
+`{ appointment }`. Una cita atendida vuelve a pendiente en la misma hora (su horario sigue ocupado) y se le resta esa visita a la clienta. `409 NOT_COMPLETED` si no estaba atendida.
+
+### `PATCH /api/admin/appointments/:id/reschedule`
+`{ date, timeSlot }` → `{ appointment }`. Mueve una cita pendiente de cualquier día (pasada, de hoy o de meses adelante), o una de un día futuro marcada como atendida por error, a cualquier hora libre desde ahora, aunque esté fuera del horario o de la ventana de reservas. Conserva `_id`, código y QR; guarda `previousDate`, `previousTimeSlot`, `rescheduledAt`, `rescheduledBy`. Esa cita atendida vuelve a pendiente y se le resta la visita a la clienta. `409 ATTENDED` para una visita real (atendida hoy o antes). `409 SLOT_TAKEN` si choca, `422 PAST_TIME` si la hora ya pasó, `422 SAME_TIME`, `409 NOT_ACTIVE` si está cancelada.
 
 ### `GET /api/admin/appointments/:id/ticket`
 Ticket de una cita con su QR (`{ ticket: { …, qrDataUrl, qrText } }`), para volver a descargarlo desde el detalle de la cita en Citas o Calendario. Los horarios ocupados responden `404`.
@@ -120,7 +129,10 @@ Se abre con cuatro toques rápidos sobre el título de cualquier sección del pa
 - Sin el modo activo, los `DELETE` responden `403 SUPER_REQUIRED`. Cada borrado queda en la colección `purgelogs` con la cuenta, la hora y una copia de lo borrado.
 
 ### `GET /api/admin/clients?q=&page=&limit=`
-Ítems: `{ id, name, phone, totalAppointments, completedAppointments, lastAppointmentDate, lastVisitDate, createdAt }`. `summary: { total, recurring }` (recurrentes = 2+ visitas).
+Ítems: `{ id, name, phone, totalAppointments, completedAppointments, lastAppointmentDate, lastVisitDate, nextAppointment, createdAt }`. `nextAppointment` es su próxima cita no cancelada que aún no empieza (`{ id, date, timeSlot, endTime, serviceName, status }`; `status: completed` = marcada como atendida por error) o `null`. Incluye `now`. `q` busca igual que en Citas (sin tildes, por palabras o por teléfono).
+
+### `GET /api/admin/clients/:id`
+`{ client, appointments, nextAppointment, now }`: la clienta, todas sus citas (las más recientes primero, máximo 200, sin horarios ocupados) con el mismo formato que Citas, y su próxima cita pendiente. `404 CLIENT_NOT_FOUND`. `summary: { total, recurring }` (recurrentes = 2+ visitas).
 
 ### `PATCH /api/admin/clients/:id`
 `{ name, phone }` → `{ client }`. Sus citas pasan al nombre y teléfono nuevos (con ese número las ve y las cancela). `409 PHONE_TAKEN` (con `details` en `phone`) si el número es de otra clienta, `404 CLIENT_NOT_FOUND`.

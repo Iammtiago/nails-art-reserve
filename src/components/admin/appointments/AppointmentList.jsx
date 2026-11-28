@@ -67,6 +67,7 @@ function AppointmentRow({ appointment, today, businessName, busyAction, disabled
       </div>
       <AppointmentActions
         appointment={appointment}
+        today={today}
         waHref={contactHref(appointment, businessName)}
         busyAction={busyAction}
         disabled={disabled}
@@ -104,6 +105,7 @@ function AppointmentCard({ appointment, today, businessName, busyAction, disable
       </div>
       <AppointmentActions
         appointment={appointment}
+        today={today}
         waHref={contactHref(appointment, businessName)}
         busyAction={busyAction}
         disabled={disabled}

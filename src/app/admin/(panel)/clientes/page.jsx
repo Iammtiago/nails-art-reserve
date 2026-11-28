@@ -7,7 +7,7 @@ export default function ClientesPage() {
   return (
     <div className="mx-auto w-full max-w-6xl">
       <div className="enter">
-        <PageHeader eyebrow="Directorio" title="Clientes" description="Tu directorio de clientas: contacto, citas y última visita." />
+        <PageHeader eyebrow="Directorio" title="Clientes" description="Toca una clienta para ver su historial y su próxima cita, y agendarle o reagendarle." />
       </div>
       <ClientsDirectory />
     </div>

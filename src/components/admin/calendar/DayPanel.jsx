@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertTriangle, CalendarPlus, Clock, Lock, LockOpen } from 'lucide-react';
+import { AlertTriangle, CalendarClock, CalendarPlus, Clock, Lock, LockOpen } from 'lucide-react';
 import { useState } from 'react';
 import { LIMITS } from '@shared/constants.js';
 import { formatDateLong, formatDuration, formatTime, formatTimeRange, pluralize } from '@shared/format.js';
@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/Button';
 import { Field, Input } from '@/components/ui/Field';
 import { Modal } from '@/components/ui/Modal';
 import { useToast } from '@/components/ui/Toast';
+import { canChangeAppointment } from '@/components/admin/appointments/appointmentUtils';
 import { OccupancyBar } from './OccupancyBar';
 import { dayState, dayStatusText, occupancyPercent, percentText } from './calendarUtils';
 
@@ -34,21 +35,39 @@ function DayOccupancy({ day }) {
   );
 }
 
-function DayAppointment({ appointment, onOpen }) {
+/** One appointment of the day: tap it for the detail, or «Reagendar» right here (any day). */
+function DayAppointment({ appointment, today, onOpen, onReschedule }) {
+  const movable = Boolean(onReschedule) && canChangeAppointment(appointment, today);
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(appointment)}
-      className="flex min-h-[56px] w-full min-w-0 items-center gap-3 rounded-xl px-3 py-2.5 text-left transition hover:bg-primary-soft"
-    >
-      <span className="min-w-0 flex-1">
-        <span className="block text-sm font-semibold text-ink">{formatTimeRange(appointment.timeSlot, appointment.endTime)}</span>
-        <span className="block truncate text-sm text-ink-2">
-          {appointment.clientName} · {appointment.serviceName}
+    <div className="flex min-w-0 items-center gap-1 rounded-xl pr-2 transition hover:bg-primary-soft">
+      <button
+        type="button"
+        onClick={() => onOpen(appointment)}
+        className="flex min-h-[56px] min-w-0 flex-1 items-center gap-3 rounded-xl px-3 py-2.5 text-left"
+      >
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold text-ink">{formatTimeRange(appointment.timeSlot, appointment.endTime)}</span>
+          <span className="block truncate text-sm text-ink-2">
+            {appointment.clientName} · {appointment.serviceName}
+          </span>
         </span>
-      </span>
-      <StatusBadge status={appointment.status} kind={appointment.kind} />
-    </button>
+        <StatusBadge status={appointment.status} kind={appointment.kind} />
+      </button>
+      {movable ? (
+        <Button
+          size="sm"
+          variant="ghost"
+          icon={CalendarClock}
+          onClick={() => onReschedule(appointment)}
+          aria-label={`Reagendar la cita de ${appointment.clientName}`}
+          title={`Reagendar la cita de ${appointment.clientName}`}
+          className="min-h-[44px] shrink-0 text-accent-ink hover:bg-accent-soft max-sm:w-11 max-sm:!px-0 sm:!px-2.5"
+        >
+          {/* Icon only on phones, so the time and the client keep the room. */}
+          <span className="max-sm:sr-only">Reagendar</span>
+        </Button>
+      ) : null}
+    </div>
   );
 }
 
@@ -96,7 +115,7 @@ function UnblockBar({ saving, onUnblock }) {
 }
 
 /** One day: status, occupancy, appointments and block/unblock (today and future only). */
-export function DayPanel({ day, appointments, workingHours, isToday, time = null, onClose, onOpenAppointment, onChanged, onNewAppointment, onBlockTime }) {
+export function DayPanel({ day, appointments, workingHours, isToday, today, time = null, onClose, onOpenAppointment, onReschedule, onChanged, onNewAppointment, onBlockTime }) {
   const toast = useToast();
   const { handleError } = useAdmin();
   const [reason, setReason] = useState('');
@@ -159,7 +178,7 @@ export function DayPanel({ day, appointments, workingHours, isToday, time = null
         {isToday || day.isPast ? (
           <div className="flex flex-wrap gap-2">
             {isToday ? <Badge tone="accent">Hoy</Badge> : null}
-            {day.isPast ? <Badge tone="neutral">Día pasado · solo lectura</Badge> : null}
+            {day.isPast ? <Badge tone="neutral">Día pasado</Badge> : null}
           </div>
         ) : null}
 
@@ -184,7 +203,7 @@ export function DayPanel({ day, appointments, workingHours, isToday, time = null
             <ul className="-mx-3 divide-y divide-line/60">
               {appointments.map((appointment) => (
                 <li key={appointment.id}>
-                  <DayAppointment appointment={appointment} onOpen={onOpenAppointment} />
+                  <DayAppointment appointment={appointment} today={today} onOpen={onOpenAppointment} onReschedule={onReschedule} />
                 </li>
               ))}
             </ul>

@@ -18,13 +18,23 @@ import { validate } from '../middleware/index.js';
 import { changePassword, createAccount, deleteAccount, listAccounts } from '../services/account.service.js';
 import { issueSession } from '../services/auth.service.js';
 import { env } from '../config/env.js';
-import { cancelByAdmin, completeAppointment, createAdminAppointment, createTimeBlock, getAdminTicket, listAppointments, rescheduleByAdmin } from '../services/appointment.service.js';
+import {
+  cancelByAdmin,
+  completeAppointment,
+  createAdminAppointment,
+  createTimeBlock,
+  getAdminTicket,
+  listAppointments,
+  reopenAppointment,
+  rescheduleByAdmin,
+  serializeForAdmin,
+} from '../services/appointment.service.js';
 
 function publicBaseUrl(req) {
   return env().appUrl || `${req.protocol}://${req.get('host')}`;
 }
 import { addBlockedDate, getCalendar, removeBlockedDate } from '../services/calendar.service.js';
-import { listClients, updateClient } from '../services/client.service.js';
+import { getClientDetail, listClients, updateClient } from '../services/client.service.js';
 import { lockSuper, purgeAppointment, purgeClient, requireSuper, superStatus, unlockSuper } from '../services/super.service.js';
 import { getSettingsDoc, toAdminSettings } from '../services/settings.service.js';
 
@@ -63,6 +73,11 @@ adminRouter.patch('/appointments/:id/cancel', validate(idParamSchema, 'params'),
   res.json({ appointment: await cancelByAdmin(req.valid.params.id) });
 });
 
+// PATCH /api/admin/appointments/:id/reopen — «Quitar asistencia»: back to pending after a mistaken «Asistió».
+adminRouter.patch('/appointments/:id/reopen', validate(idParamSchema, 'params'), async (req, res) => {
+  res.json({ appointment: await reopenAppointment(req.valid.params.id) });
+});
+
 // PATCH /api/admin/appointments/:id/reschedule — move a confirmed appointment to another free time.
 adminRouter.patch('/appointments/:id/reschedule', validate(idParamSchema, 'params'), validate(adminRescheduleSchema), async (req, res) => {
   res.json({ appointment: await rescheduleByAdmin(req.valid.params.id, req.valid.body) });
@@ -70,6 +85,11 @@ adminRouter.patch('/appointments/:id/reschedule', validate(idParamSchema, 'param
 
 adminRouter.get('/clients', validate(adminClientsQuerySchema, 'query'), async (req, res) => {
   res.json(await listClients(req.valid.query));
+});
+
+// GET /api/admin/clients/:id — the client with her appointment history and next pending appointment.
+adminRouter.get('/clients/:id', validate(idParamSchema, 'params'), async (req, res) => {
+  res.json(await getClientDetail(req.valid.params.id, { serialize: serializeForAdmin }));
 });
 
 adminRouter.patch('/clients/:id', validate(idParamSchema, 'params'), validate(clientUpdateSchema), async (req, res) => {

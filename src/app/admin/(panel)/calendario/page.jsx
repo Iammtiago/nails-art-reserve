@@ -42,11 +42,25 @@ export default function CalendarioPage() {
   // { type: 'appointment' | 'block', date } — only one form open at a time, never on top of the day panel.
   const [form, setForm] = useState(null);
   // Appointment being moved; the detail and the day panel close first so only one dialog is open.
+  // The day it was moved from opens again afterwards, to keep working on that day.
   const [moving, setMoving] = useState(null);
+  const openDateRef = useRef(null);
+  openDateRef.current = openDate;
+  const returnDayRef = useRef(null);
   const startReschedule = useCallback((appointment) => {
+    returnDayRef.current = openDateRef.current;
     setSelected(null);
     setOpenDate(null);
     setMoving(appointment);
+  }, []);
+  const endReschedule = useCallback(() => {
+    setMoving(null);
+    const day = returnDayRef.current;
+    returnDayRef.current = null;
+    if (day) {
+      setOpenTime(null);
+      setOpenDate(day);
+    }
   }, []);
 
   // "Today" comes from the server: settings.now, or /api/settings if the shell has not loaded it.
@@ -188,9 +202,11 @@ export default function CalendarioPage() {
           appointments={byDate.get(openDay.date) || EMPTY}
           workingHours={workingHours}
           isToday={openDay.date === today}
+          today={today}
           time={openTime}
           onClose={() => setOpenDate(null)}
           onOpenAppointment={setSelected}
+          onReschedule={startReschedule}
           onChanged={() => reload({ silent: true })}
           onNewAppointment={() => openForm('appointment', openDay.date, openTime)}
           onBlockTime={() => openForm('block', openDay.date, openTime)}
@@ -218,10 +234,11 @@ export default function CalendarioPage() {
           onComplete={actions.complete}
           onCancel={actions.cancel}
           onReschedule={startReschedule}
+          onReopen={actions.reopen}
           onPurged={(a) => handleAppointmentChanged(null, a.id)}
         />
       ) : null}
-      <RescheduleModal appointment={moving} onClose={() => setMoving(null)} onDone={() => reload({ silent: true })} />
+      <RescheduleModal appointment={moving} onClose={endReschedule} onDone={() => reload({ silent: true })} />
 
     </div>
   );

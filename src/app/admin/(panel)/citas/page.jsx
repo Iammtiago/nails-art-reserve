@@ -19,7 +19,11 @@ import { PageHeader, Pagination } from '@/components/ui/Controls';
 import { AdminBadge } from '@/components/admin/AdminBadge';
 import { ErrorState, LoadingState } from '@/components/ui/States';
 
+import { LIMITS } from '@shared/constants.js';
+
 const PAGE_SIZE = 20;
+// «Próximas» shows every appointment ahead on one page whenever they fit (Tiago, 2026-11-27).
+const pageSizeFor = (view) => (view === 'upcoming' ? LIMITS.pageSizeMax : PAGE_SIZE);
 const REFRESH_MS = 60_000;
 
 export default function CitasPage() {
@@ -27,9 +31,19 @@ export default function CitasPage() {
   const handleErrorRef = useRef(handleError);
   handleErrorRef.current = handleError;
 
-  const [view, setView] = useState('upcoming');
+  // «Todas» by default (Tiago, 2026-11-27): a date or a name always finds its appointment.
+  const [view, setViewState] = useState('all');
   const [search, setSearch] = useState('');
-  const [date, setDate] = useState('');
+  const [date, setDateState] = useState('');
+  // «Hoy» is a date itself: choosing another day moves to «Todas», and «Hoy» drops the date.
+  const setView = useCallback((next) => {
+    setViewState(next);
+    if (next === 'today') setDateState('');
+  }, []);
+  const setDate = useCallback((next) => {
+    setDateState(next);
+    if (next) setViewState((current) => (current === 'today' ? 'all' : current));
+  }, []);
   const [selected, setSelected] = useState(null);
   const [creating, setCreating] = useState(false);
   // Appointment being moved; the detail closes first so only one dialog is open.
@@ -51,7 +65,7 @@ export default function CitasPage() {
 
   const { data, error, reload } = useAsync(
     (signal) =>
-      apiGet('/api/admin/appointments', { view, date: dateQuery, q, page, limit: PAGE_SIZE }, { signal }).then((response) => ({
+      apiGet('/api/admin/appointments', { view, date: dateQuery, q, page, limit: pageSizeFor(view) }, { signal }).then((response) => ({
         ...response,
         requestKey,
       })),
@@ -112,7 +126,14 @@ export default function CitasPage() {
   } else if (fresh) {
     content = (
       <div className="glass enter">
-        <AppointmentsEmpty view={view} q={q} date={dateQuery} onClearSearch={() => setSearch('')} onClearDate={() => setDate('')} />
+        <AppointmentsEmpty
+          view={view}
+          q={q}
+          date={dateQuery}
+          onClearSearch={() => setSearch('')}
+          onClearDate={() => setDate('')}
+          onShowAll={() => setView('all')}
+        />
       </div>
     );
   } else if (error) {
@@ -169,6 +190,7 @@ export default function CitasPage() {
           onComplete={actions.complete}
           onCancel={actions.cancel}
           onReschedule={startReschedule}
+          onReopen={actions.reopen}
           onPurged={(a) => handleChanged(null, a.id)}
         />
       ) : null}

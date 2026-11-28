@@ -48,7 +48,7 @@ export const phoneField = z
 
 export const clientNameField = z
   .string({ error: 'Escribe tu nombre completo.' })
-  .transform((v) => v.replace(/\s+/g, ' ').trim())
+  .transform((v) => v.normalize('NFC').replace(/\s+/g, ' ').trim())
   .pipe(
     z
       .string()
@@ -162,10 +162,11 @@ export const changePasswordSchema = z
 
 // ---------- admin lists ----------
 
-export const ADMIN_VIEWS = ['today', 'upcoming', 'completed', 'cancelled', 'all'];
+export const ADMIN_VIEWS = ['all', 'today', 'completed', 'cancelled', 'upcoming'];
 
+// «Todas» by default (Tiago, 2026-11-27): a date or a name always finds its appointment.
 export const adminAppointmentsQuerySchema = z.object({
-  view: z.enum(ADMIN_VIEWS).default('upcoming'),
+  view: z.enum(ADMIN_VIEWS).default('all'),
   date: z.union([z.literal(''), dateString]).optional().default(''),
   q: searchParam,
   page: pageParam,

@@ -96,6 +96,7 @@ npm run dev
 - Máximo **3 citas activas** por teléfono; reservas hasta 30 días adelante; el mismo día, con 60 min de antelación.
 - La clienta cancela con su teléfono (debe coincidir con el de la cita) hasta la hora de inicio.
 - «Hoy» lo decide el servidor en `America/Caracas`, nunca el navegador.
+- **Panel (2026-11-27):** Citas abre en «Todas» (orden: Todas · Hoy · Atendidas · Canceladas · Próximas), empezando por hoy y lo que viene, y busca sin importar tildes. Cualquier cita pendiente, sea del día que sea, se puede reagendar o cancelar desde su detalle, desde el día del Calendario o desde la ficha de la clienta. «Asistió» solo aparece desde el día de la cita. Una visita real (atendida hoy o antes) no se mueve ni se cancela: si se marcó por error, «Quitar asistencia» la devuelve a pendiente. Las de días futuros marcadas por error sí se pueden reagendar o cancelar directamente. En Clientes, tocar una clienta abre su historial, su próxima cita y «Agendar cita» con sus datos puestos.
 - Código de reserva: 6 caracteres sin `0 O 1 I L`, generado con `crypto`. El QR abre `/admin/escanear?codigo=XXXXXX`.
 
 ## Cuentas del panel (sin credenciales en el chat ni en el código)
